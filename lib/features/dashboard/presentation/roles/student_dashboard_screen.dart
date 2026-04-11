@@ -7,6 +7,8 @@ import 'notice_board_screen.dart';
 import 'certificates_screen.dart';
 import 'feedback_screen.dart';
 import 'quiz_list_screen.dart';
+import 'ai_assistant_screen.dart';
+import 'teacher_message_hub_screen.dart';
 
 class StudentDashboardScreen extends StatelessWidget {
   const StudentDashboardScreen({super.key});
@@ -15,6 +17,12 @@ class StudentDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showChatOptions(context),
+        backgroundColor: AppTheme.primaryColor,
+        icon: const Icon(Icons.forum_rounded, color: Colors.white),
+        label: const Text('Chat & Help', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
@@ -469,6 +477,57 @@ class StudentDashboardScreen extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showChatOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Who do you need to talk to?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+            const SizedBox(height: 24),
+            ListTile(
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const TeacherMessageHubScreen()));
+              },
+              leading: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.school_rounded, color: Colors.blue),
+              ),
+              title: const Text('Message Teachers', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Ask doubts or request help directly.'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+            ),
+            const Divider(),
+            ListTile(
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AIAssistantScreen()));
+              },
+              leading: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.auto_awesome_rounded, color: Colors.purple),
+              ),
+              title: const Text('AI Assistant', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Instant homework help and study planning.'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
