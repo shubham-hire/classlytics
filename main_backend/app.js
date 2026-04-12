@@ -6,6 +6,9 @@ const studentRoutes = require('./routes/studentRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const marksRoutes = require('./routes/marksRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const assignmentRoutes = require('./routes/assignmentRoutes');
+const behaviorRoutes = require('./routes/behaviorRoutes');
+const communicationRoutes = require('./routes/communicationRoutes');
 
 const app = express();
 const PORT = 3000;
@@ -35,6 +38,9 @@ app.use('/class', studentRoutes);
 app.use('/attendance', attendanceRoutes);
 app.use('/marks', marksRoutes);
 app.use('/student', aiRoutes);
+app.use('/student', behaviorRoutes); // /student/:studentId/behavior
+app.use('/assignments', assignmentRoutes);
+app.use('/communication', communicationRoutes); // /communication/messages, /communication/announcements
 
 // Base route for connectivity check
 app.get('/', (req, res) => {

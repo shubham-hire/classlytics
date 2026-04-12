@@ -53,11 +53,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
       appBar: AppBar(
         title: const Text(
           'Students',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+          style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1E3A8A),
         elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _studentsFuture,

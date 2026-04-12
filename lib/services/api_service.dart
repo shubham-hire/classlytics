@@ -214,4 +214,96 @@ class ApiService {
       throw Exception('Error fetching suggestions: $e');
     }
   }
+
+  // ==============================
+  // NEW ERP FEATURES
+  // ==============================
+
+  // --- Assignments ---
+  
+  Future<void> createAssignment(String classId, String title, String description, String deadline) async {
+    final url = Uri.parse('$_baseUrl/assignments');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'classId': classId,
+          'title': title,
+          'description': description,
+          'deadline': deadline,
+        }),
+      );
+      if (response.statusCode != 201) {
+        throw Exception('Failed to create assignment');
+      }
+    } catch (e) {
+      throw Exception('Error creating assignment: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchAssignments(String classId) async {
+    final url = Uri.parse('$_baseUrl/assignments/$classId');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['assignments'] as List<dynamic>;
+      } else {
+        throw Exception('Failed to fetch assignments');
+      }
+    } catch (e) {
+      throw Exception('Error fetching assignments: $e');
+    }
+  }
+
+  // --- Behavior Tracking ---
+
+  Future<void> addBehaviorLog(String studentId, String type, String remark) async {
+    final url = Uri.parse('$_baseUrl/student/$studentId/behavior');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'type': type,
+          'remark': remark,
+        }),
+      );
+      if (response.statusCode != 201) {
+        throw Exception('Failed to add behavior log');
+      }
+    } catch (e) {
+      throw Exception('Error adding behavior log: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchBehaviorLogs(String studentId) async {
+    final url = Uri.parse('$_baseUrl/student/$studentId/behavior');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['behaviorLogs'] as List<dynamic>;
+      } else {
+        throw Exception('Failed to fetch behavior logs');
+      }
+    } catch (e) {
+      throw Exception('Error fetching behavior logs: $e');
+    }
+  }
+
+  // Fetch Teacher Profile
+  Future<Map<String, dynamic>> fetchProfile() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/teacher/profile'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to load profile');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
 }

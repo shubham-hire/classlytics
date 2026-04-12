@@ -22,15 +22,16 @@ class _ClassListScreenState extends State<ClassListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Matching dashboard background
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text(
           'My Classes',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+          style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1E3A8A),
         elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _classesFuture,

@@ -6,6 +6,12 @@ import '../../screens/teacher_dashboard.dart';
 import '../../screens/class_list_screen.dart';
 import '../../screens/student_list_screen.dart';
 import '../../screens/student_detail_screen.dart';
+import '../../screens/assignments_screen.dart';
+import '../../screens/gradebook_screen.dart';
+import '../../screens/lecture_attendance_screen.dart';
+import '../../screens/teacher_profile_screen.dart';
+import '../../screens/leave_management_screen.dart';
+import '../../screens/leave_history_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -51,6 +57,37 @@ final GoRouter appRouter = GoRouter(
         studentId: state.pathParameters['id'] ?? 'unknown',
         studentName: state.pathParameters['name'] ?? 'Student',
       ),
+    ),
+    GoRoute(
+      path: '/assignments/:classId',
+      builder: (context, state) => AssignmentsScreen(
+        classId: state.pathParameters['classId'] ?? 'C1',
+      ),
+    ),
+    GoRoute(
+      path: '/gradebook/:classId',
+      builder: (context, state) => GradebookScreen(
+        classId: state.pathParameters['classId'] ?? 'C1',
+      ),
+    ),
+    GoRoute(
+      path: '/lecture-attendance/:lectureId/:classId',
+      builder: (context, state) => LectureAttendanceScreen(
+        lectureId: state.pathParameters['lectureId'] ?? 'unknown',
+        classId: state.pathParameters['classId'] ?? 'unknown',
+      ),
+    ),
+    GoRoute(
+      path: '/teacher-profile',
+      builder: (context, state) => const TeacherProfileScreen(),
+    ),
+    GoRoute(
+      path: '/teacher-profile/leave',
+      builder: (context, state) => const LeaveManagementScreen(),
+    ),
+    GoRoute(
+      path: '/teacher-profile/leave/history',
+      builder: (context, state) => const LeaveHistoryScreen(),
     ),
   ],
 );

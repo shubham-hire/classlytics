@@ -22,15 +22,32 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Subtle professional background
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text(
           'Teacher Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+          style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1E3A8A), // Deep Blue primary color
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+            onPressed: () {},
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: InkWell(
+              onTap: () => context.push('/teacher-profile'),
+              borderRadius: BorderRadius.circular(20),
+              child: const CircleAvatar(
+                backgroundColor: Colors.white24,
+                child: Text('T', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dashboardDataFuture,
@@ -48,6 +65,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           final avgAttendance = "${data['avgAttendance']}%";
           final avgMarks = data['avgMarks'].toString();
           final riskStudents = data['riskStudents'] as List;
+          final scheduleData = data['schedule'] as List? ?? [];
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
@@ -95,6 +113,18 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                   ],
                 ),
 
+                const SizedBox(height: 40),
+
+                _buildTodaysSchedule(scheduleData),
+                const SizedBox(height: 40),
+
+                _buildQuickActions(),
+                const SizedBox(height: 40),
+
+                _buildPendingTasks(),
+                const SizedBox(height: 40),
+
+                _buildAnnouncementsFeed(),
                 const SizedBox(height: 40),
 
                 _buildSectionHeader('At Risk Students'),
@@ -281,6 +311,237 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTodaysSchedule(List<dynamic> scheduleData) {
+    if (scheduleData.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Today\'s Schedule'),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            children: scheduleData.asMap().entries.map((entry) {
+              int idx = entry.key;
+              var s = entry.value;
+              bool isLast = idx == scheduleData.length - 1;
+              
+              return InkWell(
+                onTap: () {
+                   // Navigate directly to attendance for this class/lecture
+                   context.push('/lecture-attendance/${s['id']}/${s['classId']}');
+                },
+                child: Column(
+                  children: [
+                    _buildScheduleItem(s['time'], '${s['subject']} (${s['className']})', s['room']),
+                    if (!isLast) const Divider(height: 24),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScheduleItem(String time, String title, String subtitle, {bool isFree = false}) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isFree ? Colors.green.shade50 : Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(time, style: TextStyle(fontWeight: FontWeight.bold, color: isFree ? Colors.green.shade700 : Colors.blue.shade700)),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+            ],
+          ),
+        ),
+        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.black26),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Quick Workflows'),
+        const SizedBox(height: 16),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.1, // more square shaped
+          children: [
+            _buildActionCard('Mark\nAttendance', Icons.how_to_reg_rounded, Colors.green, () => context.push('/lecture-attendance/QUICK/C1')),
+            _buildActionCard('Add\nMarks', Icons.drive_file_rename_outline_rounded, Colors.orange, () => context.push('/gradebook/C1')),
+            _buildActionCard('Class\nAnnouncements', Icons.campaign_rounded, Colors.blue, () {}),
+            _buildActionCard('Manage\nAssignments', Icons.note_add_rounded, Colors.purple, () => context.push('/assignments/C1')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 30),
+            ),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingTasks() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Pending Tasks'),
+        const SizedBox(height: 16),
+        _buildTaskItem('Grade Physics Assignments', 'Class 12-B • Deadline: Today', true),
+        _buildTaskItem('Submit monthly attendance report', 'Admin Dept • Overdue', false),
+      ],
+    );
+  }
+
+  Widget _buildTaskItem(String title, String subtitle, bool isUrgent) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: isUrgent ? Colors.redAccent : Colors.orangeAccent, width: 4)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: TextStyle(color: isUrgent ? Colors.redAccent : Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(0, 32),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Resolve', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnnouncementsFeed() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Announcements'),
+            TextButton(onPressed: () {}, child: const Text('View All', style: TextStyle(fontWeight: FontWeight.bold))),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _buildAnnouncementCard('Staff Meeting at 4 PM', 'Admin', 'Don\'t forget the mandatory staff meeting regarding the upcoming annual sports day preparations in the main hall.'),
+        _buildAnnouncementCard('New Leave Policy Updated', 'HR Dept', 'Please review the updated leave policy document available in the faculty portal.'),
+      ],
+    );
+  }
+
+  Widget _buildAnnouncementCard(String title, String author, String summary) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.campaign_rounded, color: Colors.blueAccent, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(summary, style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4)),
+          const SizedBox(height: 8),
+          Text('Posted by: $author • 2 hrs ago', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        ],
       ),
     );
   }
