@@ -33,7 +33,21 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_none_rounded, color: Colors.white),
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                    child: const Text('1', style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
             onPressed: () => context.push('/announcements'),
           ),
           IconButton(

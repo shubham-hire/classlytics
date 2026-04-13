@@ -153,9 +153,49 @@ class _LectureAttendanceScreenState extends State<LectureAttendanceScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 color: Colors.white,
                 width: double.infinity,
-                child: Text(
-                  'Lecture ID: ${widget.lectureId} • Class: ${widget.classId}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Lecture: ${widget.lectureId}\nClass: ${widget.classId}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
+                    ),
+                    Row(
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              for (var student in students) {
+                                _attendanceMap[student['id']] = true;
+                              }
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.green,
+                            side: const BorderSide(color: Colors.green),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          child: const Text('All P', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              for (var student in students) {
+                                _attendanceMap[student['id']] = false;
+                              }
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            side: const BorderSide(color: Colors.redAccent),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          child: const Text('All A', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               Expanded(

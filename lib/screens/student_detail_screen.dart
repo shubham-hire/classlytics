@@ -178,6 +178,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             // AI Insights Section
             _buildInsightsSection(),
             const SizedBox(height: 32),
+            
+            // AI Study Plan
+            _buildStudyPlanSection(),
+            const SizedBox(height: 32),
 
             // Interactive Selectors
             _buildMarkAttendanceSection(),
@@ -291,6 +295,94 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       decoration: BoxDecoration(
         color: color.withOpacity(0.8),
         borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+
+  Widget _buildStudyPlanSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('AI Study Roadmap', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: Colors.amber.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+              child: const Text('AUTO GENERATED', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.amber.shade200.withOpacity(0.5)),
+            boxShadow: [BoxShadow(color: Colors.amber.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Focus Subject: Mathematics",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Based on recent test scores, we recommend focusing on Calculus integration techniques for the next 2 weeks.",
+                style: TextStyle(color: Colors.black54, fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              // Timeline Steps
+              _buildRoadmapStep("Week 1", "Review basic integration formulas and solve 20 practice questions.", true),
+              _buildRoadmapStep("Week 2", "Move to Definite Integrals and Area under curves.", false),
+              _buildRoadmapStep("Week 3", "Take a mock test on integration.", false),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoadmapStep(String week, String description, bool isCurrent) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isCurrent ? Colors.amber : Colors.grey.shade300,
+                  shape: BoxShape.circle,
+                ),
+                child: isCurrent ? const Icon(Icons.star, size: 14, color: Colors.white) : const SizedBox(),
+              ),
+              Container(
+                width: 2,
+                height: 30, // Connect to next step roughly
+                color: Colors.grey.shade300,
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(week, style: TextStyle(fontWeight: FontWeight.bold, color: isCurrent ? Colors.amber.shade800 : Colors.black87)),
+                const SizedBox(height: 4),
+                Text(description, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -62,6 +62,16 @@ class _StudentListScreenState extends State<StudentListScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
+            icon: const Icon(Icons.bar_chart_rounded),
+            onPressed: () => context.push('/class-report/${widget.classId}/General'),
+            tooltip: 'Class Report',
+          ),
+          IconButton(
+            icon: const Icon(Icons.assignment_rounded),
+            onPressed: () => context.push('/assignments/${widget.classId}'),
+            tooltip: 'Assignments',
+          ),
+          IconButton(
             icon: const Icon(Icons.person_search_rounded),
             onPressed: () => _showGlobalSelection(),
             tooltip: 'Add from Registered Students',

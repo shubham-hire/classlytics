@@ -143,6 +143,8 @@ class _ClassReportScreenState extends State<ClassReportScreen> {
                   const SizedBox(height: 24),
                   _buildAIHeatmap(),
                   const SizedBox(height: 24),
+                  _buildCurriculumPacingAdvisor(),
+                  const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -333,6 +335,115 @@ class _ClassReportScreenState extends State<ClassReportScreen> {
           )
         )
       ]
+    );
+  }
+
+  Widget _buildCurriculumPacingAdvisor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+           children: [
+             Icon(Icons.speed_rounded, color: Colors.blue.shade500, size: 20),
+             const SizedBox(width: 8),
+             const Text('Curriculum Pacing Advisor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+           ]
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blue.withOpacity(0.2)),
+            boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.05), blurRadius: 10)],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Based on the recent test scores and overall class performance.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Current Pace:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('OPTIMAL', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Simple "Speedometer" visualization
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    height: 8,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      gradient: const LinearGradient(
+                        colors: [Colors.orange, Colors.green, Colors.red],
+                        stops: [0.0, 0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        width: 4,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Too Slow', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  Text('Optimal', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  Text('Too Fast', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lightbulb_outline_rounded, color: Colors.blue, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Suggestion: Group average is 76%. The current pacing is effective. Proceed to the next module as planned.",
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

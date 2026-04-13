@@ -57,6 +57,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           children: [
             _buildCreateAnnouncementCard(),
             const SizedBox(height: 32),
+            _buildAIAlertsSection(),
+            const SizedBox(height: 32),
             const Text('Previous Announcements', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
             const SizedBox(height: 16),
             _buildAnnouncementHistory(),
@@ -278,6 +280,82 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File too large! Max 400KB allowed.'), backgroundColor: Colors.red));
       setState(() { _attachedFileName = null; _attachedFileSize = null; });
     }
+  }
+
+  Widget _buildAIAlertsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Smart AI Alerts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+              child: const Text('AUTO', style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildAIAlertCard(
+          "Anomaly Detected: Amit Verma",
+          "Amit's attendance has dropped significantly by 18% over the last 2 weeks compared to the previous month.",
+          "Attendance Anomaly",
+          Icons.trending_down_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAIAlertCard(String title, String message, String tag, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
+        boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.redAccent, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(message, style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(tag, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w600)),
+              TextButton(
+                onPressed: () {},
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(60, 20),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text("View Profile", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildAnnouncementHistory() {
