@@ -229,12 +229,14 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         unselectedItemColor: Colors.grey,
         onTap: (index) {
           if (index == 1) context.push('/my-classes');
-          else if (index == 2) context.push('/attendance-management');
-          else if (index == 3) context.push('/teacher-profile');
+          else if (index == 2) context.push('/teacher-inbox');
+          else if (index == 3) context.push('/attendance-management');
+          else if (index == 4) context.push('/teacher-profile');
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(Icons.class_rounded), label: 'Classes'),
+          BottomNavigationBarItem(icon: Icon(Icons.forum_rounded), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.how_to_reg_rounded), label: 'Attendance'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Profile'),
         ],
@@ -453,6 +455,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                context.push('/my-classes');
             }),
             _buildActionCard('Mark\nAttendance', Icons.how_to_reg_rounded, Colors.green, () => context.push('/attendance-management')),
+            _buildActionCard('Leave\nApprovals', Icons.event_available_rounded, Colors.orange, () => context.push('/leave-approvals')),
+            _buildActionCard('Student\nMessages', Icons.forum_rounded, const Color(0xFF1E3A8A), () => context.push('/teacher-inbox')),
           ],
         ),
       ],

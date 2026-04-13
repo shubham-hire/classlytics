@@ -19,6 +19,9 @@ import '../../screens/add_student_screen.dart';
 import '../../screens/global_student_selection_screen.dart';
 import '../../screens/student_dashboard.dart';
 import '../../screens/ai_report_generator_screen.dart';
+import '../../screens/teacher_inbox_screen.dart';
+import '../../screens/teacher_chat_screen.dart';
+import '../../screens/student_leave_approval_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -136,6 +139,22 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/ai-assistant',
       builder: (context, state) => const AiTeachingAssistantScreen(),
+    ),
+    GoRoute(
+      path: '/teacher-inbox',
+      builder: (context, state) => const TeacherInboxScreen(),
+    ),
+    GoRoute(
+      path: '/teacher-chat/:studentId/:studentName/:className',
+      builder: (context, state) => TeacherChatScreen(
+        studentId: state.pathParameters['studentId'] ?? '',
+        studentName: Uri.decodeComponent(state.pathParameters['studentName'] ?? 'Student'),
+        className: Uri.decodeComponent(state.pathParameters['className'] ?? 'Class'),
+      ),
+    ),
+    GoRoute(
+      path: '/leave-approvals',
+      builder: (context, state) => const StudentLeaveApprovalScreen(),
     ),
   ],
 );
