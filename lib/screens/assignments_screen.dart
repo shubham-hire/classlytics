@@ -106,6 +106,8 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
         );
       }
     );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
