@@ -6,6 +6,25 @@ class ApiService {
   // Use 127.0.0.1 for Web/Desktop, 10.0.2.2 for Emulator, or your local LAN IP for physical device
   static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.59.178.116:3000';
 
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final url = Uri.parse('$_baseUrl/auth/login');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Login failed');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
   /// Fetches Teacher Dashboard data from the backend
   Future<Map<String, dynamic>> fetchDashboardData() async {
     final url = Uri.parse('$_baseUrl/teacher/dashboard');
@@ -22,8 +41,8 @@ class ApiService {
       }
     } catch (e) {
       // General error (e.g., network issue)
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching dashboard data: $e');
     }
   }
@@ -41,8 +60,8 @@ class ApiService {
         throw Exception('Failed to load classes. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching classes: $e');
     }
   }
@@ -60,8 +79,8 @@ class ApiService {
         throw Exception('Failed to load students. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching students: $e');
     }
   }
@@ -85,8 +104,8 @@ class ApiService {
         throw Exception('Failed to record attendance. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to post $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to post $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error recording attendance: $e');
     }
   }
@@ -111,8 +130,8 @@ class ApiService {
         throw Exception('Failed to add marks. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to post $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to post $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error adding marks: $e');
     }
   }
@@ -130,8 +149,8 @@ class ApiService {
         throw Exception('Failed to fetch marks. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching marks: $e');
     }
   }
@@ -149,8 +168,8 @@ class ApiService {
         throw Exception('Failed to fetch attendance. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching attendance: $e');
     }
   }
@@ -169,8 +188,8 @@ class ApiService {
         throw Exception('Failed to fetch insights. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching insights: $e');
     }
   }
@@ -189,8 +208,8 @@ class ApiService {
         throw Exception('Failed to fetch risk. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching risk: $e');
     }
   }
@@ -209,8 +228,8 @@ class ApiService {
         throw Exception('Failed to fetch suggestions. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('ApiService Error: Failed to fetch $url');
-      print('ApiService Error details: $e');
+      debugPrint('ApiService Error: Failed to fetch $url');
+      debugPrint('ApiService Error details: $e');
       throw Exception('Error fetching suggestions: $e');
     }
   }
@@ -305,5 +324,143 @@ class ApiService {
     } catch (e) {
       throw Exception('Network error: $e');
     }
+  }
+
+  // --- Class & Student Management ---
+
+  Future<void> addClass(String id, String name, String section) async {
+    final url = Uri.parse('$_baseUrl/teacher/classes');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': id, 'name': name, 'section': section}),
+      );
+      if (response.statusCode != 201) throw Exception('Failed to add class');
+    } catch (e) {
+      throw Exception('Error adding class: $e');
+    }
+  }
+
+  Future<void> addStudent(String name, String email, String classId, String rollNo) async {
+    final url = Uri.parse('$_baseUrl/class/add');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'name': name, 'email': email, 'classId': classId, 'rollNo': rollNo}),
+      );
+      if (response.statusCode != 201) throw Exception('Failed to add student');
+    } catch (e) {
+      throw Exception('Error adding student: $e');
+    }
+  }
+
+  Future<void> bulkAddStudents(String classId, List<Map<String, String>> studentList) async {
+    final url = Uri.parse('$_baseUrl/class/bulk-add');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'classId': classId, 'studentList': studentList}),
+      );
+      if (response.statusCode != 201) throw Exception('Failed to bulk add students');
+    } catch (e) {
+      throw Exception('Error bulk adding: $e');
+    }
+  }
+
+  Future<void> updateStudent(String id, String name, String rollNo, String classId) async {
+    final url = Uri.parse('$_baseUrl/class/$id');
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'name': name, 'rollNo': rollNo, 'classId': classId}),
+      );
+      if (response.statusCode != 200) throw Exception('Failed to update student');
+    } catch (e) {
+      throw Exception('Error updating student: $e');
+    }
+  }
+
+  Future<void> addStudentFull({
+    required String name,
+    required String email,
+    required String phone,
+    required String address,
+    required String country,
+    required String state,
+    required String district,
+    required String city,
+    required String classId,
+    required String dob,
+    required String currentYear,
+    required String dept,
+  }) async {
+    final url = Uri.parse('$_baseUrl/class/add');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'address': address,
+          'country': country,
+          'state': state,
+          'district': district,
+          'city': city,
+          'classId': classId,
+          'dob': dob,
+          'currentYear': currentYear,
+          'dept': dept,
+        }),
+      );
+      if (response.statusCode != 201) throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to add student');
+    } catch (e) {
+      throw Exception('Error adding student: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchRegisteredStudents({String? dept, String? year}) async {
+    String query = '$_baseUrl/class/registered?';
+    if (dept != null) query += 'dept=$dept&';
+    if (year != null) query += 'year=$year';
+    
+    try {
+      final response = await http.get(Uri.parse(query));
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch global student list');
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  Future<void> enrollStudents(String classId, List<String> studentIds) async {
+    final url = Uri.parse('$_baseUrl/teacher/enroll');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'classId': classId, 'studentIds': studentIds}),
+      );
+      if (response.statusCode != 201) throw Exception('Enrollment failed');
+    } catch (e) {
+      throw Exception('Error enrolling: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchStates() async {
+    final response = await http.get(Uri.parse('$_baseUrl/geo/states'));
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to fetch states');
+  }
+
+  Future<List<dynamic>> fetchCities(String stateCode) async {
+    final response = await http.get(Uri.parse('$_baseUrl/geo/cities/$stateCode'));
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to fetch cities');
   }
 }

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 
-class TeacherDashboardScreen extends StatefulWidget {
-  const TeacherDashboardScreen({super.key});
+class TeacherDashboard extends StatefulWidget {
+  const TeacherDashboard({super.key});
 
   @override
-  State<TeacherDashboardScreen> createState() => _TeacherDashboardScreenState();
+  State<TeacherDashboard> createState() => _TeacherDashboardState();
 }
 
-class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
+class _TeacherDashboardState extends State<TeacherDashboard> {
   late Future<Map<String, dynamic>> _dashboardDataFuture;
   final ApiService _apiService = ApiService();
 
@@ -34,7 +34,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
-            onPressed: () {},
+            onPressed: () => context.push('/announcements'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            onPressed: () => context.go('/login'),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -400,10 +404,16 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           crossAxisSpacing: 16,
           childAspectRatio: 1.1, // more square shaped
           children: [
+            _buildActionCard('Register\nNew Student', Icons.person_add_alt_1_rounded, Colors.blueAccent, () {
+              context.push('/add-student/GLOBAL');
+            }),
+            _buildActionCard('Student\nDirectory', Icons.badge_rounded, Colors.teal, () {
+              context.push('/global-students');
+            }),
+            _buildActionCard('Manage\nDivisions', Icons.layers_rounded, Colors.blue, () {
+               context.push('/my-classes');
+            }),
             _buildActionCard('Mark\nAttendance', Icons.how_to_reg_rounded, Colors.green, () => context.push('/attendance-management')),
-            _buildActionCard('Add\nMarks', Icons.drive_file_rename_outline_rounded, Colors.orange, () => context.push('/gradebook/C1')),
-            _buildActionCard('Class\nAnnouncements', Icons.campaign_rounded, Colors.blue, () => context.push('/announcements')),
-            _buildActionCard('Manage\nAssignments', Icons.note_add_rounded, Colors.purple, () => context.push('/assignments/C1')),
           ],
         ),
       ],

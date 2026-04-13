@@ -32,6 +32,19 @@ class _ClassListScreenState extends State<ClassListScreen> {
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_box_rounded),
+            onPressed: () => _showAddClassDialog(),
+            tooltip: 'Add Class',
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddClassDialog(),
+        label: const Text('Add Class'),
+        icon: const Icon(Icons.add),
+        backgroundColor: const Color(0xFF1E3A8A),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _classesFuture,
@@ -69,7 +82,7 @@ class _ClassListScreenState extends State<ClassListScreen> {
                   leading: CircleAvatar(
                     backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                     child: Text(
-                      classData['className'][0], // Show first letter
+                      (classData['name'] ?? 'C')[0], // Show first letter
                       style: TextStyle(
                         color: Theme.of(context).primaryColor,
                         fontWeight: FontWeight.bold,
@@ -77,11 +90,11 @@ class _ClassListScreenState extends State<ClassListScreen> {
                     ),
                   ),
                   title: Text(
-                    classData['className'],
+                    classData['name'] ?? 'Unnamed Class',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   subtitle: Text(
-                    classData['subject'],
+                    'Section: ${classData['section'] ?? 'N/A'}',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
@@ -90,7 +103,7 @@ class _ClassListScreenState extends State<ClassListScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => StudentListScreen(
-                          classId: classData['classId'],
+                          classId: classData['id'],
                         ),
                       ),
                     );
@@ -134,6 +147,45 @@ class _ClassListScreenState extends State<ClassListScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAddClassDialog() {
+    final nameController = TextEditingController();
+    final sectionController = TextEditingController();
+    final idController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add New Class'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: idController, decoration: const InputDecoration(labelText: 'Class ID (e.g., C101)')),
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Class Name (e.g., 10th A)')),
+            TextField(controller: sectionController, decoration: const InputDecoration(labelText: 'Section/Subject')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (idController.text.isNotEmpty && nameController.text.isNotEmpty) {
+                try {
+                  await _apiService.addClass(idController.text, nameController.text, sectionController.text);
+                  Navigator.pop(context);
+                  setState(() { _classesFuture = _apiService.fetchClasses(); });
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Class added successfully')));
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
       ),
     );
   }

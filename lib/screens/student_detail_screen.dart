@@ -740,22 +740,4 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
-  Widget _buildInfoSection(String title, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const Spacer(),
-          const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 18),
-        ],
-      ),
-    );
-  }
 }

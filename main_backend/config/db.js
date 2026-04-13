@@ -12,4 +12,5 @@ const pool = mysql.createPool({
 
 const promisePool = pool.promise();
 
+// Connection will be validated during initialization in app.js
 module.exports = promisePool;

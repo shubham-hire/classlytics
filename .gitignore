@@ -43,4 +43,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Node.js backend related
+main_backend/node_modules/
+main_backend/uploads/
+.env
+.env.*
+
 plan.md
+wireframe_plan.md
+dev_plan.md
+developer_plan.md
+developer_docs.md   

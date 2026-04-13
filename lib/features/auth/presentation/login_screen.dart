@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:main_app/core/theme/app_theme.dart';
 import 'package:main_app/features/dashboard/presentation/dashboard_screen.dart';
+import '../../../services/api_service.dart';
+import '../../../services/auth_store.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +14,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final ApiService _apiService = ApiService();
+  bool _isLoading = false;
+  bool _obscureText = true;
+
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -38,8 +45,53 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
     _animController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _apiService.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      final user = result['user'];
+      final role = (user['role'] as String).toLowerCase();
+
+      // Persist user data
+      AuthStore.instance.setUser(user);
+
+      if (mounted) {
+        if (role == 'teacher' || role == 'admin') {
+          context.go('/teacher-dashboard');
+        } else if (role == 'student') {
+          context.go('/dashboard', extra: UserRole.student);
+        } else if (role == 'parent') {
+          context.go('/dashboard', extra: UserRole.parent);
+        } else {
+          context.go('/teacher-dashboard');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login failed: ${e.toString().replaceAll('Exception: Network error: Exception: ', '')}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -58,23 +110,25 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Minimal Icon / Logo
-                    Container(
-                      height: 80,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryColor.withOpacity(0.3),
-                            blurRadius: 24,
-                            offset: const Offset(0, 12),
-                          )
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 40),
+                    // Logo
+                    Center(
+                      child: Container(
+                        height: 80,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withOpacity(0.3),
+                              blurRadius: 24,
+                              offset: const Offset(0, 12),
+                            )
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 40),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -101,20 +155,28 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     ),
                     const SizedBox(height: 48),
 
-                    // Inputs
+                    // Email Field
                     TextField(
                       controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                        hintText: 'Email Address (e.g. admin@, teacher@)',
+                        hintText: 'Email Address',
                         prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textSecondary),
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Password Field
                     TextField(
-                      obscureText: true,
+                      controller: _passwordController,
+                      obscureText: _obscureText,
                       decoration: InputDecoration(
                         hintText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: AppTheme.textSecondary),
+                          onPressed: () => setState(() => _obscureText = !_obscureText),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -139,70 +201,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                     // Login Button
                     ElevatedButton(
-                      onPressed: () {
-                        // Mock Navigation based on email
-                        final email = _emailController.text.toLowerCase();
-                        UserRole role = UserRole.student; // Default
-                        
-                        if (email.contains('admin')) {
-                          role = UserRole.admin;
-                        } else if (email.contains('teacher')) {
-                          role = UserRole.teacher;
-                        } else if (email.contains('parent')) {
-                          role = UserRole.parent;
-                        }
-                        
-                        context.go('/dashboard', extra: role);
-                      },
-                      child: const Text('Sign In'),
+                      onPressed: _isLoading ? null : _handleLogin,
+                      child: _isLoading
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Sign In'),
                     ),
                     
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                     
-                    // Divider
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Or continue with',
-                            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 32),
-
-                    // Google OAuth Button
+                    // Teacher Quick Access
                     OutlinedButton.icon(
-                      onPressed: () {
-                        context.go('/dashboard');
-                      },
-                      icon: const Icon(Icons.g_mobiledata_rounded, size: 32),
-                      label: const Text('Sign in with Google'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.textPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.white,
-                        side: BorderSide(color: Colors.grey.shade200),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Teacher Dashboard Button
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        context.go('/teacher-dashboard');
-                      },
+                      onPressed: () => context.go('/teacher-dashboard'),
                       icon: const Icon(Icons.admin_panel_settings_rounded, size: 24),
                       label: const Text('Teacher Dashboard Demo'),
                       style: OutlinedButton.styleFrom(

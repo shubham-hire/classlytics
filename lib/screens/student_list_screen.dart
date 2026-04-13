@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
-import 'student_detail_screen.dart';
+import 'global_student_selection_screen.dart';
 
 class StudentListScreen extends StatefulWidget {
   final String classId;
@@ -59,6 +60,18 @@ class _StudentListScreenState extends State<StudentListScreen> {
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_search_rounded),
+            onPressed: () => _showGlobalSelection(),
+            tooltip: 'Add from Registered Students',
+          ),
+          IconButton(
+            icon: const Icon(Icons.group_add_rounded),
+            onPressed: () => _showBulkAddDialog(),
+            tooltip: 'Bulk Add Students',
+          ),
+        ],
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _studentsFuture,
@@ -155,20 +168,15 @@ class _StudentListScreenState extends State<StudentListScreen> {
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             subtitle: Text(
-                              'Roll No: ${student['rollNo']}',
+                              'Roll No: ${student['roll_no'] ?? 'N/A'}',
                               style: TextStyle(color: Colors.grey.shade600),
                             ),
-                            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.edit_note_rounded, color: Colors.blueAccent),
+                              onPressed: () => _showUpdateStudentDialog(student),
+                            ),
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => StudentDetailScreen(
-                                    studentId: student['id'],
-                                    studentName: student['name'],
-                                  ),
-                                ),
-                              );
+                              context.push('/student-detail/${student['id']}/${student['name']}');
                             },
                           ),
                         );
@@ -210,5 +218,117 @@ class _StudentListScreenState extends State<StudentListScreen> {
         ),
       ),
     );
+  }
+
+  void _showUpdateStudentDialog(dynamic student) {
+    final nameController = TextEditingController(text: student['name']);
+    final rollController = TextEditingController(text: student['roll_no']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Student'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(controller: rollController, decoration: const InputDecoration(labelText: 'Roll Number')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final nav = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await _apiService.updateStudent(student['id'], nameController.text, rollController.text, widget.classId);
+                nav.pop();
+                setState(() { _studentsFuture = _apiService.fetchStudents(widget.classId); _allStudents = null; });
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBulkAddDialog() {
+    final bulkController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bulk Add Students'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Enter list in format:\nName, Email, RollNo (one per line)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bulkController,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: 'Rahul, rahul@email.com, 01\nSneha, sneha@email.com, 02',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final nav = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                List<String> lines = bulkController.text.split('\n');
+                List<Map<String, String>> studentList = [];
+                for (var line in lines) {
+                  var parts = line.split(',');
+                  if (parts.length >= 2) {
+                    studentList.add({
+                      'name': parts[0].trim(),
+                      'email': parts[1].trim(),
+                      'rollNo': parts.length > 2 ? parts[2].trim() : '',
+                    });
+                  }
+                }
+                if (studentList.isNotEmpty) {
+                  await _apiService.bulkAddStudents(widget.classId, studentList);
+                  nav.pop();
+                  setState(() { _studentsFuture = _apiService.fetchStudents(widget.classId); _allStudents = null; });
+                }
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+              }
+            },
+            child: const Text('Add All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGlobalSelection() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GlobalStudentSelectionScreen(
+          classId: widget.classId,
+        ),
+      ),
+    ).then((value) {
+      if (value == true) {
+        setState(() {
+          _studentsFuture = _apiService.fetchStudents(widget.classId);
+          _allStudents = null;
+        });
+      }
+    });
   }
 }

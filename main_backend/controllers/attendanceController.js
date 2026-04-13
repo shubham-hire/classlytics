@@ -1,52 +1,46 @@
-const { attendanceRecords } = require('../data/storage');
+const db = require('../config/db');
 
-exports.markAttendance = (req, res) => {
+exports.markAttendance = async (req, res) => {
   const { studentId, date, status } = req.body;
 
-  // 1. Validation
-  if (!studentId) {
-    return res.status(400).json({ error: "studentId is required" });
+  if (!studentId || !status) {
+    return res.status(400).json({ error: "studentId and status are required" });
   }
 
-  if (!status || !["Present", "Absent"].includes(status)) {
-    return res.status(400).json({ error: "Status must be 'Present' or 'Absent'" });
+  const attendanceDate = date || new Date().toISOString().split('T')[0];
+
+  try {
+    const [result] = await db.execute(
+      'INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?)',
+      [studentId, attendanceDate, status]
+    );
+
+    res.status(201).json({
+      message: "Attendance recorded successfully",
+      record: { id: result.insertId, studentId, date: attendanceDate, status }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  // 2. Record data
-  const record = {
-    studentId,
-    date: date || new Date().toISOString().split('T')[0], // Use provides date or today
-    status,
-    timestamp: new Date()
-  };
-
-  attendanceRecords.push(record);
-
-  console.log(`[ATTENDANCE] Recorded for ${studentId}: ${status} on ${record.date}`);
-  console.log(`Total records: ${attendanceRecords.length}`);
-
-  // 3. Success Response
-  res.status(201).json({
-    message: "Attendance recorded successfully",
-    record: record
-  });
 };
 
-exports.getAttendanceByStudent = (req, res) => {
+exports.getAttendanceByStudent = async (req, res) => {
   const { studentId } = req.params;
 
-  // Filter records for the specific student
-  const studentRecords = attendanceRecords.filter(r => r.studentId === studentId);
+  try {
+    const [rows] = await db.execute('SELECT date, status FROM attendance WHERE student_id = ?', [studentId]);
+    
+    let percentage = 0;
+    if (rows.length > 0) {
+      const presentCount = rows.filter(r => r.status === 'Present').length;
+      percentage = Math.round((presentCount / rows.length) * 100);
+    }
 
-  // Calculate percentage
-  let percentage = 0;
-  if (studentRecords.length > 0) {
-    const presentCount = studentRecords.filter(r => r.status === 'Present').length;
-    percentage = Math.round((presentCount / studentRecords.length) * 100);
+    res.status(200).json({
+      attendance: rows,
+      percentage: percentage
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  res.status(200).json({
-    attendance: studentRecords.map(r => ({ date: r.date, status: r.status })),
-    percentage: percentage
-  });
 };

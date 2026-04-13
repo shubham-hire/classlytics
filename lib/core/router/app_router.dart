@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
@@ -15,6 +14,9 @@ import '../../screens/leave_history_screen.dart';
 import '../../screens/class_report_screen.dart';
 import '../../screens/attendance_management_screen.dart';
 import '../../screens/announcements_screen.dart';
+import '../../screens/add_student_screen.dart';
+import '../../screens/global_student_selection_screen.dart';
+import '../../screens/student_dashboard.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -44,7 +46,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/teacher-dashboard',
-      builder: (context, state) => const TeacherDashboardScreen(),
+      builder: (context, state) => const TeacherDashboard(),
       routes: [
         GoRoute(
           path: 'my-classes',
@@ -107,6 +109,20 @@ final GoRouter appRouter = GoRouter(
         classId: state.pathParameters['classId'] ?? 'unknown',
         subject: Uri.decodeComponent(state.pathParameters['subject'] ?? 'General'),
       ),
+    ),
+    GoRoute(
+      path: '/add-student/:classId',
+      builder: (context, state) => AddStudentScreen(
+        classId: state.pathParameters['classId'] ?? 'GLOBAL',
+      ),
+    ),
+    GoRoute(
+      path: '/global-students',
+      builder: (context, state) => const GlobalStudentSelectionScreen(),
+    ),
+    GoRoute(
+      path: '/student-dashboard',
+      builder: (context, state) => const StudentDashboard(),
     ),
   ],
 );

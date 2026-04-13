@@ -2,8 +2,17 @@ const express = require('express');
 const router = express.Router();
 const studentController = require('../controllers/studentController');
 
-// Map GET /class/:classId/students to controller
-router.get('/test', (req, res) => res.send('Student Router is working!'));
+// Fetch all registered students (global list)
+router.get('/registered', studentController.getRegisteredStudents);
+
+// Fetch students by class
 router.get('/:classId/students', studentController.getStudentsByClass);
+
+// Individual Student management
+router.post('/add', studentController.addStudent);
+router.put('/:id', studentController.updateStudent);
+
+// Bulk management
+router.post('/bulk-add', studentController.bulkAddStudents);
 
 module.exports = router;

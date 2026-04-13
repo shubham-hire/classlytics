@@ -43,7 +43,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
   void _applyForLeave() {
     final _formKey = GlobalKey<FormState>();
-    String? _selectedType;
     DateTime? _startDate;
     DateTime? _endDate;
     final TextEditingController _reasonController = TextEditingController();
@@ -82,7 +81,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         DropdownMenuItem(value: 'Sick Leave', child: Text('Sick Leave')),
                         DropdownMenuItem(value: 'Casual Leave', child: Text('Casual Leave')),
                       ],
-                      onChanged: (value) => _selectedType = value,
+                      onChanged: (_) {},
                       validator: (value) => value == null ? 'Please select a leave type' : null,
                     ),
                     const SizedBox(height: 16),
