@@ -197,6 +197,28 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    // Teacher Dashboard Button
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        context.go('/teacher-dashboard');
+                      },
+                      icon: const Icon(Icons.admin_panel_settings_rounded, size: 24),
+                      label: const Text('Teacher Dashboard Demo'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: AppTheme.primaryColor.withOpacity(0.05),
+                        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

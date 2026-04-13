@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Use 127.0.0.1 for Web/Desktop and 10.0.2.2 for Android Emulator
-  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.0.2.2:3000';
+  // Use 127.0.0.1 for Web/Desktop, 10.0.2.2 for Emulator, or your local LAN IP for physical device
+  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.59.178.116:3000';
 
   /// Fetches Teacher Dashboard data from the backend
   Future<Map<String, dynamic>> fetchDashboardData() async {
