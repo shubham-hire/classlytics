@@ -122,10 +122,11 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen> {
                 const SizedBox(height: 24),
 
                 // Settings Card
-                _buildInfoCard('Account & Settings', [
+                _buildInfoCard('Management & Settings', [
+                  _buildSettingsRow(Icons.feedback_outlined, 'Student Feedback Inbox', () => context.push('/teacher-feedback')),
+                  _buildSettingsRow(Icons.beach_access_outlined, 'Leave Management (HR)', () => context.push('/teacher-profile/leave')),
                   _buildSettingsRow(Icons.lock_outline, 'Change Password', () {}),
-                  _buildSettingsRow(Icons.notifications_active_outlined, 'Notification Preferences', () {}),
-                  _buildSettingsRow(Icons.beach_access_outlined, 'Leave Management (HR)', () => context.push('/teacher-profile/leave'), isLast: true),
+                  _buildSettingsRow(Icons.notifications_active_outlined, 'Notification Preferences', () {}, isLast: true),
                 ]),
                 const SizedBox(height: 32),
 

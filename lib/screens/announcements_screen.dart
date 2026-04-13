@@ -15,6 +15,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   double? _attachedFileSize; // in KB
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
+  
+  String _selectedClass = 'All Classes';
+  String _selectedType = 'Announcement';
+  bool _isSubmitting = false;
 
   final List<String> _divisions = ['TE IT A', 'TE IT B', 'BE IT A', 'BE IT B', 'All Classes'];
   final List<Map<String, dynamic>> _severities = [
@@ -25,18 +29,25 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
   final List<Map<String, dynamic>> _history = [
     {
-      'title': 'Unit Test Postponed',
-      'message': 'The unit test scheduled for tomorrow is postponed to Monday.',
-      'division': 'TE IT A',
-      'severity': 'Important',
-      'date': '2 hours ago'
+      'title': 'School closed tomorrow',
+      'body': 'Due to heavy rains, the school will remain closed tomorrow.',
+      'class': 'All Classes',
+      'date': 'Oct 24, 2026',
+      'type': 'Notice',
     },
     {
-      'title': 'New Study Material',
-      'message': 'I have uploaded the notes for Chapter 4 in the assignments section.',
-      'division': 'TE IT B',
-      'severity': 'Normal',
-      'date': 'Yesterday'
+      'title': 'Mid-term Exams Schedule',
+      'body': 'The schedule for mid-term exams has been published. Please check the portal.',
+      'class': 'Class 10 A',
+      'date': 'Oct 22, 2026',
+      'type': 'Announcement',
+    },
+    {
+      'title': 'Annual Sports Meet 2026',
+      'body': 'Registrations are now open for the Annual Sports Meet. Participate and win!',
+      'class': 'All Classes',
+      'date': 'Oct 20, 2026',
+      'type': 'Event',
     },
   ];
 
@@ -84,22 +95,46 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             const Text('New Announcement', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1E3A8A))),
             const SizedBox(height: 20),
             
-            // Division & Severity Row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDropdown(
-                    label: 'Target Division',
-                    value: _selectedDivision,
-                    items: _divisions,
-                    onChanged: (val) => setState(() => _selectedDivision = val!),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildSeverityDropdown(),
-                ),
+            const Text('Target Class', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedClass,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF1F5F9),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'All Classes', child: Text('All Classes (Broadcast)')),
+                DropdownMenuItem(value: 'Class 10 A', child: Text('Class 10 A')),
+                DropdownMenuItem(value: 'Class 10 B', child: Text('Class 10 B')),
               ],
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedClass = val);
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            const Text('Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedType,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF1F5F9),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+              icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF1E3A8A)),
+              items: const [
+                DropdownMenuItem(value: 'Announcement', child: Text('Announcement')),
+                DropdownMenuItem(value: 'Notice', child: Text('Important Notice')),
+                DropdownMenuItem(value: 'Event', child: Text('Event')),
+              ],
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedType = val);
+              },
             ),
             const SizedBox(height: 20),
             
@@ -210,12 +245,12 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       setState(() {
         _history.insert(0, {
           'title': _titleController.text,
-          'message': _messageController.text,
-          'division': _selectedDivision,
-          'severity': _selectedSeverity,
-          'attachment': _attachedFileName,
-          'date': 'Just now'
+          'body': _messageController.text,
+          'class': _selectedClass,
+          'type': _selectedType,
+          'date': 'Just now',
         });
+        _isSubmitting = false;
         _titleController.clear();
         _messageController.clear();
         _attachedFileName = null;
@@ -328,7 +363,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                   color: Colors.redAccent.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: Colors.redAccent, size: 18),
+                child: Icon(icon, size: 18, color: Colors.redAccent),
               ),
               const SizedBox(width: 12),
               Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
@@ -364,18 +399,34 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _history.length,
       itemBuilder: (context, index) {
-        final ann = _history[index];
-        final severity = _severities.firstWhere((s) => s['label'] == ann['severity']);
-        final Color color = severity['color'] as Color;
+        final item = _history[index];
+        final type = item['type'] as String? ?? 'Announcement';
+        
+        Color typeColor = Colors.blue;
+        IconData typeIcon = Icons.campaign_rounded;
+        
+        if (type == 'Notice') {
+          typeColor = Colors.red;
+          typeIcon = Icons.info_outline_rounded;
+        } else if (type == 'Event') {
+          typeColor = Colors.orange;
+          typeIcon = Icons.event_rounded;
+        }
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 16),
+          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border(left: BorderSide(color: color, width: 4)),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,41 +436,64 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                    child: Text(ann['severity'], style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10)),
+                    decoration: BoxDecoration(
+                      color: typeColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      type.toUpperCase(),
+                      style: TextStyle(
+                        color: typeColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
                   ),
-                  Text(ann['date'], style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text(
+                    item['date'],
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              Text(ann['title'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text(ann['message'], style: const TextStyle(color: Colors.black87, height: 1.4)),
-              
-              if (ann['attachment'] != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.description_rounded, size: 16, color: Colors.blueAccent),
-                      const SizedBox(width: 8),
-                      Text(ann['attachment'], style: const TextStyle(fontSize: 12, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.download_rounded, size: 14, color: Colors.grey),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.people_alt_rounded, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(ann['division'], style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: typeColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(typeIcon, color: typeColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item['title'] ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                item['body'] ?? '',
+                style: const TextStyle(color: Colors.black87, fontSize: 14, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              Divider(color: Colors.grey.shade200),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                   const Icon(Icons.group_rounded, size: 14, color: Colors.blueGrey),
+                   const SizedBox(width: 6),
+                   Text(
+                     'Sent to: ${item['class']}',
+                     style: const TextStyle(color: Colors.blueGrey, fontSize: 12, fontWeight: FontWeight.w600),
+                   ),
                 ],
               ),
             ],

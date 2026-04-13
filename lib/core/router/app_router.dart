@@ -22,6 +22,11 @@ import '../../screens/ai_report_generator_screen.dart';
 import '../../screens/teacher_inbox_screen.dart';
 import '../../screens/teacher_chat_screen.dart';
 import '../../screens/student_leave_approval_screen.dart';
+import '../../screens/quiz_creator_screen.dart';
+import '../../screens/teacher_feedback_inbox_screen.dart';
+import '../../screens/digital_library_management_screen.dart';
+import '../../screens/timetable_management_screen.dart';
+import '../../screens/quiz_results_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -155,6 +160,26 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/leave-approvals',
       builder: (context, state) => const StudentLeaveApprovalScreen(),
+    ),
+    GoRoute(
+      path: '/quiz-creator',
+      builder: (context, state) => const QuizCreatorScreen(),
+    ),
+    GoRoute(
+      path: '/teacher-feedback',
+      builder: (context, state) => const TeacherFeedbackInboxScreen(),
+    ),
+    GoRoute(
+      path: '/digital-library',
+      builder: (context, state) => const DigitalLibraryManagementScreen(),
+    ),
+    GoRoute(
+      path: '/timetable',
+      builder: (context, state) => const TimetableManagementScreen(),
+    ),
+    GoRoute(
+      path: '/quiz-results',
+      builder: (context, state) => const QuizResultsScreen(),
     ),
   ],
 );

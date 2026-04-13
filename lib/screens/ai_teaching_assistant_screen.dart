@@ -19,7 +19,13 @@ class ChatMessage {
 class _AiTeachingAssistantScreenState extends State<AiTeachingAssistantScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final Color _primaryColor = const Color(0xFF1E3A8A); // Deep Blue
+  final Color _primaryColor = const Color(0xFF1E3A8A);
+
+  final List<String> _commonStudentQuestions = [
+    'Why do we study integration in maths?',
+    'Can you explain Newton\'s Third Law with a real-world example?',
+    'What\'s the difference between speed and velocity?',
+  ];
 
   List<ChatMessage> _messages = [
     ChatMessage(
@@ -126,15 +132,77 @@ class _AiTeachingAssistantScreenState extends State<AiTeachingAssistantScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  _buildQuickActionChip("Draft a parent email"),
+                  _buildQuickActionChip("Draft a parent email", Icons.email_rounded, Colors.blueAccent),
                   const SizedBox(width: 8),
-                  _buildQuickActionChip("Analyze attendance"),
+                  _buildQuickActionChip("Analyze attendance", Icons.bar_chart_rounded, Colors.orange),
                   const SizedBox(width: 8),
-                  _buildQuickActionChip("Generate a pop quiz"),
+                  _buildQuickActionChip("Generate a pop quiz", Icons.quiz_rounded, Colors.teal),
+                  const SizedBox(width: 8),
+                  _buildQuickActionChip("Suggest exam topics", Icons.lightbulb_rounded, Colors.purple),
                 ],
               ),
             ),
 
+          // GAP 10: Common Student Questions section
+          if (_messages.length < 3)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.school_rounded, size: 16, color: Colors.green),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Common Student Questions',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                        child: const Text('TRENDING', style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ..._commonStudentQuestions.map((q) => InkWell(
+                    onTap: () => _sendMessage('A student asked: "$q" — how should I explain this?'),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.help_outline_rounded, size: 14, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(q, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                          ),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.grey),
+                        ],
+                      ),
+                    ),
+                  )),
+                ],
+              ),
+            ),
           // Chat messages area
           Expanded(
             child: ListView.builder(
@@ -226,11 +294,12 @@ class _AiTeachingAssistantScreenState extends State<AiTeachingAssistantScreen> {
     );
   }
 
-  Widget _buildQuickActionChip(String label) {
+  Widget _buildQuickActionChip(String label, IconData icon, Color color) {
     return ActionChip(
-      backgroundColor: Colors.white,
-      side: BorderSide(color: _primaryColor.withOpacity(0.2)),
-      label: Text(label, style: TextStyle(color: _primaryColor, fontSize: 13, fontWeight: FontWeight.w600)),
+      backgroundColor: color.withOpacity(0.08),
+      side: BorderSide(color: color.withOpacity(0.3)),
+      avatar: Icon(icon, size: 16, color: color),
+      label: Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
       onPressed: () => _handleQuickAction(label),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );

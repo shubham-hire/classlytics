@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 import 'ai_auto_grader_modal.dart';
 
@@ -105,8 +106,6 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
         );
       }
     );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,80 +116,129 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
         iconTheme: const IconThemeData(color: Colors.black87),
         elevation: 0,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showCreateModal,
-        icon: const Icon(Icons.add),
-        label: const Text('New Assignment'),
-      ),
-      body: FutureBuilder<List<dynamic>>(
-        future: _assignmentsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          final assignments = snapshot.data ?? [];
-
-          if (assignments.isEmpty) {
-            return const Center(child: Text('No assignments yet.', style: TextStyle(color: Colors.grey, fontSize: 16)));
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: assignments.length,
-            itemBuilder: (context, index) {
-              final assignment = assignments[index];
-              return Card(
-                elevation: 0,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              assignment['title'],
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
-                            child: Text('Due: ${assignment['deadline']}', style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(assignment['description'], style: const TextStyle(color: Colors.black87)),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _showAiGraderModal(assignment),
-                          icon: const Icon(Icons.auto_awesome, size: 16, color: Colors.amber),
-                          label: const Text('Evaluate Submissions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF1E3A8A)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _showCreateModal,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('New Assignment', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              );
-            },
-          );
-        },
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/quiz-creator'),
+                    icon: const Icon(Icons.quiz_rounded, size: 18),
+                    label: const Text('Create Quiz', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1E3A8A),
+                      side: const BorderSide(color: Color(0xFF1E3A8A)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/quiz-results'),
+                    icon: const Icon(Icons.bar_chart_rounded, size: 18),
+                    label: const Text('Quiz Results', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green,
+                      side: const BorderSide(color: Colors.green),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<dynamic>>(
+              future: _assignmentsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                final assignments = snapshot.data ?? [];
+
+                if (assignments.isEmpty) {
+                  return const Center(child: Text('No assignments yet.', style: TextStyle(color: Colors.grey, fontSize: 16)));
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: assignments.length,
+                  itemBuilder: (context, index) {
+                    final assignment = assignments[index];
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    assignment['title'],
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                                  child: Text('Due: ${assignment['deadline']}', style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+                                )
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(assignment['description'], style: const TextStyle(color: Colors.black87)),
+                            const SizedBox(height: 16),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _showAiGraderModal(assignment),
+                                icon: const Icon(Icons.auto_awesome, size: 16, color: Colors.amber),
+                                label: const Text('Evaluate Submissions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFF1E3A8A)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

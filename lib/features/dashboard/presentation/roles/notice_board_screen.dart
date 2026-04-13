@@ -17,17 +17,26 @@ class NoticeBoardScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _buildNoticeCard('Annual Sports Meet 2026', 'Sports Dept', 'Starts 20 Apr, 09:00 AM', true, Icons.sports_basketball_rounded, Colors.orange),
+          _buildNoticeCard('School closed tomorrow', 'Admin', 'Oct 24, 2026', 'Notice'),
           const SizedBox(height: 16),
-          _buildNoticeCard('Final Exam Schedule Released', 'Examinations', 'Valid from 10 May', false, Icons.assignment_rounded, Colors.red),
-          const SizedBox(height: 16),
-          _buildNoticeCard('Tech Fest Registration', 'Computer Dept', 'Ends 25 Apr', true, Icons.computer_rounded, Colors.blue),
+          _buildNoticeCard('Annual Sports Meet 2026', 'Sports Dept', 'Oct 20, 2026', 'Event'),
         ],
       ),
     );
   }
 
-  Widget _buildNoticeCard(String title, String department, String date, bool isEvent, IconData icon, Color color) {
+  Widget _buildNoticeCard(String title, String issuer, String date, String type) {
+    Color typeColor = Colors.blue;
+    IconData typeIcon = Icons.campaign_rounded;
+    
+    if (type == 'Notice') {
+      typeColor = Colors.red;
+      typeIcon = Icons.info_outline_rounded;
+    } else if (type == 'Event') {
+      typeColor = Colors.orange;
+      typeIcon = Icons.event_rounded;
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -43,8 +52,8 @@ class NoticeBoardScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                child: Text(isEvent ? 'EVENT' : 'NOTICE', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                decoration: BoxDecoration(color: typeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(type.toUpperCase(), style: TextStyle(color: typeColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
               ),
               Text(date, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
             ],
@@ -54,8 +63,8 @@ class NoticeBoardScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-                child: Icon(icon, color: color, size: 28),
+                decoration: BoxDecoration(color: typeColor.withOpacity(0.1), shape: BoxShape.circle),
+                child: Icon(typeIcon, color: typeColor, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -64,7 +73,7 @@ class NoticeBoardScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Text('Issued by $department', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+          Text('Issued by $issuer', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
         ],
       ),
     );

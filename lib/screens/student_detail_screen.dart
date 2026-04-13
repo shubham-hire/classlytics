@@ -162,9 +162,22 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             // Real-time Attendance Stats
             _buildAttendanceStats(),
             const SizedBox(height: 16),
+
+            // GAP 8: Subject Attendance Rings
+            _buildSubjectAttendanceRings(),
+            const SizedBox(height: 16),
             
             // Real-time Marks Stats
             _buildMarksStats(),
+            const SizedBox(height: 16),
+
+            // Term Progress (GAP 14)
+            _buildTermProgress(),
+
+            const SizedBox(height: 16),
+
+            // Top Subjects
+            _buildTopSubjects(),
             const SizedBox(height: 16),
 
             // Risk Prediction Section
@@ -181,6 +194,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             
             // AI Study Plan
             _buildStudyPlanSection(),
+            const SizedBox(height: 32),
+
+            // GAP 11: Certificate Issuing
+            _buildCertificateSection(),
             const SizedBox(height: 32),
 
             // Interactive Selectors
@@ -299,6 +316,116 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
+  /// GAP 14: Term Progress — mirrors student_stats_screen.dart
+  Widget _buildTermProgress() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Term Progress', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
+          const SizedBox(height: 4),
+          const Text('Score trend across tests', style: TextStyle(color: Colors.grey, fontSize: 12)),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 80,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildProgressBar(0.60, 'Test 1'),
+                _buildProgressBar(0.75, 'Test 2'),
+                _buildProgressBar(0.55, 'Test 3'),
+                _buildProgressBar(0.85, 'Test 4'),
+                _buildProgressBar(0.70, 'Test 5'),
+                _buildProgressBar(0.90, 'Test 6'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(double factor, String label) {
+    final color = factor >= 0.75 ? Colors.green : factor >= 0.55 ? Colors.orange : Colors.redAccent;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Container(
+          width: 28,
+          height: 70 * factor,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [color.withOpacity(0.5), color], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+      ],
+    );
+  }
+
+  /// GAP 14: Top Subjects — mirrors student_stats_screen.dart
+  Widget _buildTopSubjects() {
+    final subjects = [
+      {'name': 'Mathematics', 'score': 78.0, 'color': Colors.blue},
+      {'name': 'Physics', 'score': 65.0, 'color': Colors.orange},
+      {'name': 'Chemistry', 'score': 82.0, 'color': Colors.purple},
+      {'name': 'History', 'score': 90.0, 'color': Colors.green},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Top Subjects', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 2.0,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: subjects.map((s) {
+            final color = s['color'] as Color;
+            final score = s['score'] as double;
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 3))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(s['name'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                  Text('${score.toInt()}%', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: color)),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: score / 100,
+                      backgroundColor: color.withOpacity(0.1),
+                      color: color,
+                      minHeight: 4,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStudyPlanSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,7 +493,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               ),
               Container(
                 width: 2,
-                height: 30, // Connect to next step roughly
+                height: 30,
                 color: Colors.grey.shade300,
               ),
             ],
@@ -384,6 +511,143 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// GAP 11: Certificate issuance
+  Widget _buildCertificateSection() {
+    final templates = [
+      {'label': 'Merit Certificate', 'icon': Icons.emoji_events_rounded, 'color': Colors.amber},
+      {'label': 'Participation', 'icon': Icons.star_rounded, 'color': Colors.blue},
+      {'label': 'Excellence Award', 'icon': Icons.workspace_premium_rounded, 'color': Colors.purple},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Issue Certificate', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: Colors.amber.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+              child: const Text('OFFICIAL', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: templates.map((t) {
+            final color = t['color'] as Color;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => _showCertificateSheet(t['label'] as String, t['icon'] as IconData, color),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.07),
+                    border: Border.all(color: color.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(t['icon'] as IconData, color: color, size: 32),
+                      const SizedBox(height: 8),
+                      Text(
+                        t['label'] as String,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  void _showCertificateSheet(String type, IconData icon, Color color) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        bool issued = false;
+        return StatefulBuilder(
+          builder: (context, setSheetState) => Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: color.withOpacity(0.25)),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(icon, color: color, size: 48),
+                      const SizedBox(height: 12),
+                      Text(
+                        type,
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Awarded to: ${widget.studentName}',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Issued by: Classlytics  •  ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (issued)
+                  Column(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: Colors.green, size: 40),
+                      const SizedBox(height: 8),
+                      const Text('Certificate issued successfully!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Close'),
+                      ),
+                    ],
+                  )
+                else
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await Future.delayed(const Duration(milliseconds: 800));
+                      setSheetState(() => issued = true);
+                    },
+                    icon: Icon(icon, size: 18),
+                    label: const Text('Issue Certificate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: color,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 54),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -582,6 +846,36 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
           ),
           Text('ID: ${widget.studentId}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          const SizedBox(height: 16),
+          // GAP 6: Fee Status Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildHeaderBadge(Icons.check_circle_rounded, 'Fees Paid', Colors.greenAccent.shade700),
+              const SizedBox(width: 12),
+              _buildHeaderBadge(Icons.class_rounded, 'Class 10 A', Colors.white70),
+              const SizedBox(width: 12),
+              _buildHeaderBadge(Icons.calendar_today_rounded, 'Yr 2026', Colors.white70),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderBadge(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
@@ -669,6 +963,72 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
+  /// GAP 8: Subject-wise attendance rings
+  Widget _buildSubjectAttendanceRings() {
+    final subjects = [
+      {'sub': 'Math', 'pct': 0.92, 'color': Colors.blue},
+      {'sub': 'Physics', 'pct': 0.74, 'color': Colors.orange},
+      {'sub': 'Chemistry', 'pct': 0.85, 'color': Colors.purple},
+      {'sub': 'History', 'pct': 0.60, 'color': Colors.red},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Subject Attendance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
+          const SizedBox(height: 4),
+          const Text('Per-subject breakdown', style: TextStyle(color: Colors.grey, fontSize: 12)),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: subjects.map((s) {
+              final pct = s['pct'] as double;
+              final color = s['color'] as Color;
+              final isLow = pct < 0.75;
+              return Column(
+                children: [
+                  SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          value: pct,
+                          strokeWidth: 7,
+                          backgroundColor: color.withOpacity(0.12),
+                          color: color,
+                        ),
+                        Text(
+                          '${(pct * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: isLow ? Colors.red : color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(s['sub'] as String, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87)),
+                  if (isLow) ...[const SizedBox(height: 2), const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red)],
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHistorySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -691,37 +1051,43 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: history.length,
               itemBuilder: (context, index) {
-                final record = history[history.length - 1 - index]; // Show latest first
+                final record = history[history.length - 1 - index];
                 final status = record['status'];
                 final isPresent = status == 'Present';
-                
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(record['date'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (isPresent ? Colors.green : Colors.redAccent).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          status,
-                          style: TextStyle(
-                            color: isPresent ? Colors.green : Colors.redAccent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                final color = isPresent ? Colors.green : Colors.redAccent;
+
+                // GAP 9: Tappable heatmap tile
+                return GestureDetector(
+                  onTap: () => _showAttendanceDetail(record),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border(left: BorderSide(color: color, width: 3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(isPresent ? Icons.check_circle_rounded : Icons.cancel_rounded, color: color, size: 18),
+                        const SizedBox(width: 10),
+                        Text(record['date'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            status,
+                            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey.shade400),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -729,6 +1095,68 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           },
         ),
       ],
+    );
+  }
+
+  void _showAttendanceDetail(Map<String, dynamic> record) {
+    final status = record['status'] as String;
+    final isPresent = status == 'Present';
+    final color = isPresent ? Colors.green : Colors.redAccent;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+                  child: Icon(isPresent ? Icons.check_circle_rounded : Icons.cancel_rounded, color: color, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(status, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: color)),
+                    Text(record['date'], style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _detailRow(Icons.person_rounded, 'Student', widget.studentName),
+            _detailRow(Icons.confirmation_number_rounded, 'Student ID', widget.studentId),
+            _detailRow(Icons.class_rounded, 'Class', 'Class 10 A'),
+            _detailRow(Icons.access_time_rounded, 'Recorded At', '08:45 AM'),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.blueAccent),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

@@ -457,6 +457,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             _buildActionCard('Mark\nAttendance', Icons.how_to_reg_rounded, Colors.green, () => context.push('/attendance-management')),
             _buildActionCard('Leave\nApprovals', Icons.event_available_rounded, Colors.orange, () => context.push('/leave-approvals')),
             _buildActionCard('Student\nMessages', Icons.forum_rounded, const Color(0xFF1E3A8A), () => context.push('/teacher-inbox')),
+            _buildActionCard('Digital\nLibrary', Icons.local_library_rounded, Colors.purple, () => context.push('/digital-library')),
+            _buildActionCard('Timetable', Icons.table_view_rounded, Colors.indigo, () => context.push('/timetable')),
           ],
         ),
       ],
