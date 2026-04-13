@@ -20,8 +20,7 @@ class _StudentTasksScreenState extends State<StudentTasksScreen> {
   @override
   void initState() {
     super.initState();
-    // Use a global class ID or pull from session; using 'global' for now
-    _assignmentsFuture = _apiService.fetchAssignments('global');
+    _assignmentsFuture = _apiService.fetchAssignments('global').catchError((_) => <dynamic>[]);
     _searchController.addListener(() {
       setState(() => _searchQuery = _searchController.text.toLowerCase());
     });
