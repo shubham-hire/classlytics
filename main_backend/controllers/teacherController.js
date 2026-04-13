@@ -6,8 +6,8 @@ exports.getDashboardData = (req, res) => {
     avgAttendance: 78,
     avgMarks: 65,
     riskStudents: [
-      { name: "Rahul", risk: "HIGH" },
-      { name: "Sneha", risk: "MEDIUM" }
+      { id: "S101", name: "Rahul", risk: "HIGH" },
+      { id: "S102", name: "Sneha", risk: "MEDIUM" }
     ],
     schedule: schedule,
   };

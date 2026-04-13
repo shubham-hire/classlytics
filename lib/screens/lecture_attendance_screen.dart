@@ -4,8 +4,14 @@ import '../services/api_service.dart';
 class LectureAttendanceScreen extends StatefulWidget {
   final String lectureId;
   final String classId;
+  final String subject;
 
-  const LectureAttendanceScreen({super.key, required this.lectureId, required this.classId});
+  const LectureAttendanceScreen({
+    super.key, 
+    required this.lectureId, 
+    required this.classId,
+    this.subject = "Software Engineering", // Default for now
+  });
 
   @override
   State<LectureAttendanceScreen> createState() => _LectureAttendanceScreenState();
@@ -39,24 +45,80 @@ class _LectureAttendanceScreenState extends State<LectureAttendanceScreen> {
   }
 
   void _submitAttendance() async {
-    int successCount = 0;
+    final totalStudents = _attendanceMap.length;
+    final presentCount = _attendanceMap.values.where((v) => v).length;
+    final now = DateTime.now();
+    final dateStr = "${now.day}/${now.month}/${now.year}";
+    final timeStr = "${now.hour}:${now.minute.toString().padLeft(2, '0')}";
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
     try {
-      // In a real app we'd bulk-submit. Here we loop due to existing single-student endpoint
       for (var entry in _attendanceMap.entries) {
-        final studentId = entry.key;
-        final status = entry.value ? 'Present' : 'Absent';
-        
-        await _apiService.markAttendance(studentId, status);
-        successCount++;
+        await _apiService.markAttendance(entry.key, entry.value ? 'Present' : 'Absent');
       }
       
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Attendance recorded for $successCount students!'), backgroundColor: Colors.green));
-      Navigator.pop(context); // Go back to dashboard after saving
+      Navigator.pop(context); // Close loading dialog
+
+      // Show Success Summary Dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green),
+              SizedBox(width: 10),
+              Text('Attendance Submitted'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _summaryRow('Subject', widget.subject),
+              _summaryRow('Class', widget.classId),
+              _summaryRow('Attendance', '$presentCount / $totalStudents Present'),
+              _summaryRow('Date', dateStr),
+              _summaryRow('Time', timeStr),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context); // Go back to dashboard
+              },
+              child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to record attendance: $e'), backgroundColor: Colors.red));
+      Navigator.pop(context); // Close loading
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
     }
+  }
+
+  Widget _summaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: Colors.black87, fontSize: 14),
+          children: [
+            TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -68,13 +130,6 @@ class _LectureAttendanceScreenState extends State<LectureAttendanceScreen> {
         backgroundColor: const Color(0xFF1E3A8A),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: _submitAttendance,
-            child: const Text('Submit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _studentsFuture,
@@ -152,6 +207,21 @@ class _LectureAttendanceScreenState extends State<LectureAttendanceScreen> {
                       ),
                     );
                   },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ElevatedButton(
+                  onPressed: _submitAttendance,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 54),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 4,
+                    shadowColor: const Color(0xFF1E3A8A).withOpacity(0.4),
+                  ),
+                  child: const Text('Submit Attendance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

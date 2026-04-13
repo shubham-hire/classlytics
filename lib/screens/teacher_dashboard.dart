@@ -156,6 +156,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                           ],
                         ),
                         child: ListTile(
+                          onTap: () {
+                            context.push('/student-detail/${student['id']}/${student['name']}');
+                          },
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           leading: Container(
                             width: 12,
@@ -333,15 +336,15 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
             ],
           ),
           child: Column(
-            children: scheduleData.asMap().entries.map((entry) {
+            children: scheduleData.asMap().entries.map<Widget>((entry) {
               int idx = entry.key;
               var s = entry.value;
               bool isLast = idx == scheduleData.length - 1;
               
               return InkWell(
                 onTap: () {
-                   // Navigate directly to attendance for this class/lecture
-                   context.push('/lecture-attendance/${s['id']}/${s['classId']}');
+                  // Navigate directly to attendance for this class/lecture
+                  context.push('/lecture-attendance/${s['id']}/${s['classId']}/${Uri.encodeComponent(s['subject'])}');
                 },
                 child: Column(
                   children: [
@@ -397,9 +400,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           crossAxisSpacing: 16,
           childAspectRatio: 1.1, // more square shaped
           children: [
-            _buildActionCard('Mark\nAttendance', Icons.how_to_reg_rounded, Colors.green, () => context.push('/lecture-attendance/QUICK/C1')),
+            _buildActionCard('Mark\nAttendance', Icons.how_to_reg_rounded, Colors.green, () => context.push('/attendance-management')),
             _buildActionCard('Add\nMarks', Icons.drive_file_rename_outline_rounded, Colors.orange, () => context.push('/gradebook/C1')),
-            _buildActionCard('Class\nAnnouncements', Icons.campaign_rounded, Colors.blue, () {}),
+            _buildActionCard('Class\nAnnouncements', Icons.campaign_rounded, Colors.blue, () => context.push('/announcements')),
             _buildActionCard('Manage\nAssignments', Icons.note_add_rounded, Colors.purple, () => context.push('/assignments/C1')),
           ],
         ),

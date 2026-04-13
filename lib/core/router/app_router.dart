@@ -12,6 +12,9 @@ import '../../screens/lecture_attendance_screen.dart';
 import '../../screens/teacher_profile_screen.dart';
 import '../../screens/leave_management_screen.dart';
 import '../../screens/leave_history_screen.dart';
+import '../../screens/class_report_screen.dart';
+import '../../screens/attendance_management_screen.dart';
+import '../../screens/announcements_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -23,6 +26,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/attendance-management',
+      builder: (context, state) => const AttendanceManagementScreen(),
+    ),
+    GoRoute(
+      path: '/announcements',
+      builder: (context, state) => const AnnouncementsScreen(),
     ),
     GoRoute(
       path: '/dashboard',
@@ -71,10 +82,11 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/lecture-attendance/:lectureId/:classId',
+      path: '/lecture-attendance/:lectureId/:classId/:subject',
       builder: (context, state) => LectureAttendanceScreen(
         lectureId: state.pathParameters['lectureId'] ?? 'unknown',
         classId: state.pathParameters['classId'] ?? 'unknown',
+        subject: Uri.decodeComponent(state.pathParameters['subject'] ?? 'Software Engineering'),
       ),
     ),
     GoRoute(
@@ -88,6 +100,13 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/teacher-profile/leave/history',
       builder: (context, state) => const LeaveHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/class-report/:classId/:subject',
+      builder: (context, state) => ClassReportScreen(
+        classId: state.pathParameters['classId'] ?? 'unknown',
+        subject: Uri.decodeComponent(state.pathParameters['subject'] ?? 'General'),
+      ),
     ),
   ],
 );
