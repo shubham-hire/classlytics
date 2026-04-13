@@ -2,10 +2,10 @@
 -- Global Sequences for IDs
 CREATE TABLE IF NOT EXISTS global_sequences (
     name VARCHAR(50) PRIMARY KEY,
-    last_value INT DEFAULT 0
+    `last_value` INT DEFAULT 0
 );
 
-INSERT IGNORE INTO global_sequences (name, last_value) VALUES ('student', 0);
+INSERT IGNORE INTO global_sequences (name, `last_value`) VALUES ('student', 0);
 
 -- Users Table (Handles Admin, Teacher, Student, Parent)
 CREATE TABLE IF NOT EXISTS users (

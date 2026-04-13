@@ -208,6 +208,31 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           );
         },
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF1E3A8A),
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          if (index == 1) context.push('/my-classes');
+          else if (index == 2) context.push('/attendance-management');
+          else if (index == 3) context.push('/teacher-profile');
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.class_rounded), label: 'Classes'),
+          BottomNavigationBarItem(icon: Icon(Icons.how_to_reg_rounded), label: 'Attendance'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Profile'),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/ai-assistant'),
+        backgroundColor: const Color(0xFF1E3A8A), // Deep Blue to match professional theme
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: const Icon(Icons.smart_toy_rounded, color: Colors.amber),
+        label: const Text('AI Assistant', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
     );
   }
 

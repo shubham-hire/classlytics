@@ -53,8 +53,9 @@ app.get('/', (req, res) => {
   res.send('Classlytics Teacher API is running...');
 });
 
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Also accessible on local network at http://192.168.1.4:${PORT}`);
   // Initialize Database
   await initDb();
 });

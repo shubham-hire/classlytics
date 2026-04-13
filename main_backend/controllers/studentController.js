@@ -34,8 +34,8 @@ exports.addStudent = async (req, res) => {
 
   try {
     // 1. Generate Sequential ID
-    await db.execute('UPDATE global_sequences SET last_value = last_value + 1 WHERE name = "student"');
-    const [seq] = await db.execute('SELECT last_value FROM global_sequences WHERE name = "student"');
+    await db.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
+    const [seq] = await db.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
     const studentId = 'STU' + seq[0].last_value.toString().padStart(3, '0');
 
     // 2. Create User
@@ -144,8 +144,8 @@ exports.bulkAddStudents = async (req, res) => {
     for (const s of studentList) {
       const userId = uuidv4();
       
-      await db.execute('UPDATE global_sequences SET last_value = last_value + 1 WHERE name = "student"');
-      const [seq] = await db.execute('SELECT last_value FROM global_sequences WHERE name = "student"');
+      await db.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
+      const [seq] = await db.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
       const studentId = 'STU' + seq[0].last_value.toString().padStart(3, '0');
 
       await db.execute(

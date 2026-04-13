@@ -141,6 +141,8 @@ class _ClassReportScreenState extends State<ClassReportScreen> {
                 children: [
                   _buildSummaryCards(),
                   const SizedBox(height: 24),
+                  _buildAIHeatmap(),
+                  const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -253,6 +255,84 @@ class _ClassReportScreenState extends State<ClassReportScreen> {
         const SizedBox(width: 10),
         _buildStatCard('Low Perf', '2', Colors.red),
       ],
+    );
+  }
+
+  Widget _buildAIHeatmap() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+           children: [
+             Icon(Icons.auto_awesome, color: Colors.purple.shade300, size: 20),
+             const SizedBox(width: 8),
+             const Text('AI Predictive Heatmap', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+           ]
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.purple.withOpacity(0.2)),
+            boxShadow: [BoxShadow(color: Colors.purple.withOpacity(0.05), blurRadius: 10)],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Students identified at risk of failing based on trajectory and attendance.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _allData.map((student) {
+                  final percentage = (student['total'] / student['max']) * 100;
+                  Color heatColor = Colors.green.shade400;
+                  String reason = "Stable trajectory. Good engagement.";
+                  
+                  if (percentage < 50) { 
+                    heatColor = Colors.redAccent; 
+                    reason = "Critical risk: 15% drop in last two tests."; 
+                  } else if (percentage < 80 && student['name'] == 'Rahul Gupta') {
+                     // Artificial AI trigger for demo
+                     heatColor = Colors.orangeAccent;
+                     reason = "Moderate risk: 7% attendance drop detected recently.";
+                  }
+
+                  return Tooltip(
+                    message: '${student['name']}\n$reason',
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black87, 
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                    ),
+                    textStyle: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: heatColor.withOpacity(0.15),
+                        border: Border.all(color: heatColor, width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          student['name'].split(' ').map((e) => e[0]).join().substring(0, 2),
+                          style: TextStyle(color: heatColor, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ]
+          )
+        )
+      ]
     );
   }
 

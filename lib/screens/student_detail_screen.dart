@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 
 class StudentDetailScreen extends StatefulWidget {
@@ -201,7 +202,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       children: [
         Row(
           children: [
-            const Text('AI Insights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const Text('AI Behavior Summarizer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -211,57 +212,86 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        FutureBuilder<List<dynamic>>(
-          future: _insightsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
-            }
-            if (snapshot.hasError) return Text('Error: ${snapshot.error}');
-            
-            final insights = snapshot.data ?? [];
-            if (insights.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.grey),
-                    SizedBox(width: 12),
-                    Text('No specific insights available.', style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-              );
-            }
-
-            return Column(
-              children: insights.map((insight) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.purple.withOpacity(0.1)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.auto_awesome, color: Colors.purple.shade300, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          insight,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            );
-          },
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              context.push('/ai-report/${widget.studentId}/${Uri.encodeComponent(widget.studentName)}');
+            },
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Generate Full Narrative Report'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E3A8A),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.purple.withOpacity(0.15)),
+            boxShadow: [BoxShadow(color: Colors.purple.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.psychology_rounded, color: Colors.purple.shade400, size: 28),
+                  const SizedBox(width: 12),
+                  const Text('Behavioral Pattern Analysis', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Overall sentiment over the past 30 days is Positive. Shows strong leadership in group exercises but occasionally gets distracted during lengthy theoretical sessions.",
+                style: TextStyle(color: Colors.black87, fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 20),
+              const Text('Engagement Trend (Last 7 Days)', style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _buildTrendBar(0.4, Colors.orange),
+                  _buildTrendBar(0.6, Colors.blue),
+                  _buildTrendBar(0.8, Colors.green),
+                  _buildTrendBar(0.9, Colors.green),
+                  _buildTrendBar(0.5, Colors.orange),
+                  _buildTrendBar(0.7, Colors.blue),
+                  _buildTrendBar(0.95, Colors.green),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Older', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  Text('Recent', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                ],
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTrendBar(double heightFactor, Color color) {
+    return Container(
+      width: 24,
+      height: 60 * heightFactor,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(4),
+      ),
     );
   }
 

@@ -27,10 +27,15 @@ const initDb = async () => {
         const schemaPath = path.join(__dirname, 'schema.sql');
         const schema = fs.readFileSync(schemaPath, 'utf8');
 
-        // Split schema into individual queries
+        // Split schema into individual queries and strip comments
         const queries = schema
             .split(';')
-            .map(q => q.trim())
+            .map(q => q
+                .split('\n')
+                .filter(line => !line.trim().startsWith('--'))
+                .join('\n')
+                .trim()
+            )
             .filter(q => q.length > 0);
 
         for (let query of queries) {

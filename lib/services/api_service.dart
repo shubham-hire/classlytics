@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Use 127.0.0.1 for Web/Desktop, 10.0.2.2 for Emulator, or your local LAN IP for physical device
-  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://10.59.178.116:3000';
+  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.4:3000';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$_baseUrl/auth/login');

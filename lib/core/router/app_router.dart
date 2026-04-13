@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../screens/ai_teaching_assistant_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../screens/teacher_dashboard.dart';
 import '../../screens/class_list_screen.dart';
@@ -17,6 +18,7 @@ import '../../screens/announcements_screen.dart';
 import '../../screens/add_student_screen.dart';
 import '../../screens/global_student_selection_screen.dart';
 import '../../screens/student_dashboard.dart';
+import '../../screens/ai_report_generator_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -123,6 +125,17 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/student-dashboard',
       builder: (context, state) => const StudentDashboard(),
+    ),
+    GoRoute(
+      path: '/ai-report/:id/:name',
+      builder: (context, state) => AiReportGeneratorScreen(
+        studentId: state.pathParameters['id'] ?? 'unknown',
+        studentName: state.pathParameters['name'] ?? 'Student',
+      ),
+    ),
+    GoRoute(
+      path: '/ai-assistant',
+      builder: (context, state) => const AiTeachingAssistantScreen(),
     ),
   ],
 );

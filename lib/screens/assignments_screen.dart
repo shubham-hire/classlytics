@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'ai_auto_grader_modal.dart';
 
 class AssignmentsScreen extends StatefulWidget {
   final String classId;
@@ -26,6 +27,15 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
 
   void _fetchAssignments() {
     _assignmentsFuture = _apiService.fetchAssignments(widget.classId);
+  }
+
+  void _showAiGraderModal(Map<String, dynamic> assignment) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AiAutoGraderModal(assignment: assignment),
+    );
   }
 
   void _createAssignment() async {
@@ -160,6 +170,20 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(assignment['description'], style: const TextStyle(color: Colors.black87)),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showAiGraderModal(assignment),
+                          icon: const Icon(Icons.auto_awesome, size: 16, color: Colors.amber),
+                          label: const Text('Evaluate Submissions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF1E3A8A)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
