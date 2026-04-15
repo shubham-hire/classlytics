@@ -2,13 +2,16 @@ const express = require('express');
 const router = express.Router();
 const teacherController = require('../controllers/teacherController');
 
-// Map GET /teacher/dashboard to controller
+// GET /teacher/dashboard?teacherId=<id> — Live stats
 router.get('/dashboard', teacherController.getDashboardData);
 
-// Map GET /teacher/schedule to controller
+// GET /teacher/schedule — Timetable
 router.get('/schedule', teacherController.getSchedule);
 
-// Map GET /teacher/profile to controller
+// GET /teacher/profile?teacherId=<id>
 router.get('/profile', teacherController.getProfile);
+
+// GET /teacher/class-stats?teacherId=<id>
+router.get('/class-stats', teacherController.getClassStats);
 
 module.exports = router;

@@ -11,6 +11,8 @@ router.get('/:classId/students', studentController.getStudentsByClass);
 // Individual Student management
 router.post('/add', studentController.addStudent);
 router.put('/:id', studentController.updateStudent);
+router.get('/student/:id', studentController.getStudentById);
+
 
 // Bulk management
 router.post('/bulk-add', studentController.bulkAddStudents);

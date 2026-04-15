@@ -81,11 +81,15 @@ CREATE TABLE IF NOT EXISTS marks (
 CREATE TABLE IF NOT EXISTS assignments (
     id VARCHAR(50) PRIMARY KEY,
     class_id VARCHAR(50),
+    teacher_id VARCHAR(50),
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    media_url VARCHAR(500) DEFAULT NULL,
+    media_type ENUM('image', 'pdf', 'none') DEFAULT 'none',
     deadline DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Submissions Table
@@ -97,6 +101,48 @@ CREATE TABLE IF NOT EXISTS submissions (
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     score_awarded FLOAT DEFAULT NULL,
     FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+);
+
+-- Quizzes Table
+CREATE TABLE IF NOT EXISTS quizzes (
+    id VARCHAR(50) PRIMARY KEY,
+    class_id VARCHAR(50),
+    teacher_id VARCHAR(50),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    duration_minutes INT NOT NULL DEFAULT 30,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Quiz Questions Table
+CREATE TABLE IF NOT EXISTS quiz_questions (
+    id VARCHAR(50) PRIMARY KEY,
+    quiz_id VARCHAR(50) NOT NULL,
+    question TEXT NOT NULL,
+    option_a VARCHAR(500) NOT NULL,
+    option_b VARCHAR(500) NOT NULL,
+    option_c VARCHAR(500) NOT NULL,
+    option_d VARCHAR(500) NOT NULL,
+    correct_option ENUM('A','B','C','D') NOT NULL,
+    marks INT NOT NULL DEFAULT 1,
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
+);
+
+-- Quiz Submissions Table
+CREATE TABLE IF NOT EXISTS quiz_submissions (
+    id VARCHAR(50) PRIMARY KEY,
+    quiz_id VARCHAR(50) NOT NULL,
+    student_id VARCHAR(50) NOT NULL,
+    score INT NOT NULL DEFAULT 0,
+    total_marks INT NOT NULL DEFAULT 0,
+    time_taken_seconds INT DEFAULT NULL,
+    answers JSON DEFAULT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_quiz_student (quiz_id, student_id),
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 );
 
@@ -130,4 +176,16 @@ CREATE TABLE IF NOT EXISTS announcements (
     body TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+);
+
+-- Fees Table
+CREATE TABLE IF NOT EXISTS fees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(50) NOT NULL,
+    total_fee DECIMAL(10,2) NOT NULL DEFAULT 50000.00,
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    due_date DATE,
+    semester VARCHAR(20) DEFAULT 'Sem 1',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 );

@@ -20,4 +20,7 @@ router.get('/:studentId/notifications', aiController.getStudentNotifications);
 // Map POST /student/homework-help to controller
 router.post('/homework-help', aiController.getHomeworkHelp);
 
+// Map POST /teacher-help to controller
+router.post('/teacher-help', aiController.getTeacherHelp);
+
 module.exports = router;

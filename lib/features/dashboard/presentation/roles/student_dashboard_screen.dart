@@ -24,6 +24,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   late Future<Map<String, dynamic>> _attendanceFuture;
   late Future<Map<String, dynamic>> _marksFuture;
   late Future<List<dynamic>> _insightsFuture;
+  late Future<Map<String, dynamic>> _feeStatusFuture;
+  late Future<List<dynamic>> _assignmentsFuture;
 
   Map<String, dynamic> get _user => AuthStore.instance.currentUser ?? {};
   String get _studentId => AuthStore.instance.studentId;
@@ -38,6 +40,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     _attendanceFuture = _apiService.fetchAttendance(_studentId);
     _marksFuture = _apiService.fetchMarks(_studentId);
     _insightsFuture = _apiService.fetchInsights(_studentId);
+    _feeStatusFuture = _apiService.fetchFeeStatus(_studentId);
+    _assignmentsFuture = _apiService.fetchStudentAssignments(_studentId);
   }
 
   @override
@@ -127,22 +131,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                 _buildAIInsightsSection(),
                 const SizedBox(height: 48),
 
-                const Text(
-                  'Upcoming Tasks',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                _buildUpcomingTaskCard('Physics Assignment', 'Tomorrow, 10:00 AM', 'Pending', Colors.red),
-                const SizedBox(height: 16),
-                _buildUpcomingTaskCard('Math Worksheet', '12 Apr, 11:59 PM', 'Urgent', Colors.orange),
-                const SizedBox(height: 16),
-                _buildUpcomingTaskCard('History Essay', '15 Apr, 08:00 AM', 'Pending', AppTheme.primaryColor),
+                // Upcoming Assignments from Backend
+                _buildUpcomingAssignmentsSection(),
                 
                 const SizedBox(height: 40),
               ],
@@ -357,46 +347,74 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   }
 
   Widget _buildFeeCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.green.shade100, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.shade50.withOpacity(0.5),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _feeStatusFuture,
+      builder: (context, snapshot) {
+        final total = snapshot.hasData ? snapshot.data!['totalFee'] ?? 50000 : 50000;
+        final paid = snapshot.hasData ? snapshot.data!['paidAmount'] ?? 0 : 0;
+        final pending = snapshot.hasData ? snapshot.data!['pendingAmount'] ?? 50000 : 50000;
+        final semester = snapshot.hasData ? snapshot.data!['semester'] ?? 'Sem 1' : '...';
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.green.shade100, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.shade50.withOpacity(0.5),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
-                child: Icon(Icons.account_balance_wallet_rounded, color: Colors.green.shade700, size: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
+                        child: Icon(Icons.account_balance_wallet_rounded, color: Colors.green.shade700, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Fee Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
+                    child: Text(semester.toString(), style: TextStyle(fontSize: 11, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              const Text('Fee Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildFeeItem('Total Fee', '₹${_formatFee(total)}', Colors.blue),
+                  _buildFeeItem('Paid', '₹${_formatFee(paid)}', Colors.green),
+                  _buildFeeItem('Pending', '₹${_formatFee(pending)}', pending > 0 ? Colors.orange : Colors.green),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildFeeItem('Total Fee', '₹50,000', Colors.blue), // Using Rupees for local context
-              _buildFeeItem('Paid', '₹35,000', Colors.green),
-              _buildFeeItem('Pending', '₹15,000', Colors.orange),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  String _formatFee(dynamic value) {
+    final num amount = (value is num) ? value : num.tryParse(value.toString()) ?? 0;
+    if (amount >= 1000) {
+      return '${(amount / 1000).toStringAsFixed(0)}K';
+    }
+    return amount.toStringAsFixed(0);
   }
 
   Widget _buildFeeItem(String label, String amount, Color color) {
@@ -479,6 +497,79 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 
+  Widget _buildUpcomingAssignmentsSection() {
+    return FutureBuilder<List<dynamic>>(
+      future: _assignmentsFuture,
+      builder: (context, snapshot) {
+        final assignments = snapshot.data ?? [];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Upcoming Assignments',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const Center(child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(),
+              ))
+            else if (snapshot.hasError || assignments.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Text(
+                    'No assignments yet. Check back soon!',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ),
+              )
+            else
+              ...assignments.take(5).map((a) {
+                final bool submitted = (a['submitted'] == 1 || a['submitted'] == true);
+                final deadline = a['deadline'] != null
+                    ? DateTime.tryParse(a['deadline'].toString())
+                    : null;
+                final isOverdue = deadline != null && deadline.isBefore(DateTime.now()) && !submitted;
+                final Color statusColor = submitted
+                    ? Colors.green
+                    : isOverdue ? Colors.red : AppTheme.primaryColor;
+                final String statusText = submitted ? 'Submitted' : isOverdue ? 'Overdue' : 'Pending';
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildUpcomingTaskCard(
+                    a['title'] ?? 'Assignment',
+                    deadline != null
+                        ? '${deadline.day} ${_monthName(deadline.month)}, ${deadline.hour.toString().padLeft(2, '0')}:${deadline.minute.toString().padLeft(2, '0')}'
+                        : 'No deadline',
+                    statusText,
+                    statusColor,
+                  ),
+                );
+              }),
+          ],
+        );
+      },
+    );
+  }
+
+  String _monthName(int month) {
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month];
+  }
+
   Widget _buildUpcomingTaskCard(String title, String deadline, String status, Color statusColor) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -496,26 +587,30 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textSecondary),
-                  const SizedBox(width: 6),
-                  Text(
-                    deadline,
-                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                  ),
-                ],
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textSecondary),
+                    const SizedBox(width: 6),
+                    Text(
+                      deadline,
+                      style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(

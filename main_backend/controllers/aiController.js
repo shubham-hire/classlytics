@@ -182,27 +182,238 @@ exports.getStudentNotifications = async (req, res) => {
   }
 };
 
-exports.getHomeworkHelp = (req, res) => {
-  const { query } = req.body;
-  
+exports.getHomeworkHelp = async (req, res) => {
+  const { query, studentId, imageBase64, imageMimeType } = req.body;
+  // imageBase64: raw base64 string (no data URI prefix)
+  // imageMimeType: 'image/jpeg' | 'image/png' | 'image/webp'
+
   if (!query) {
     return res.status(400).json({ error: "Query is required." });
   }
 
-  // Mock AI response logic
-  let answer = "I'm still learning about that topic. Could you provide more context?";
-  
-  if (query.toLowerCase().includes("math") || query.toLowerCase().includes("calculate")) {
-    answer = "To solve this math problem, remember to follow the Order of Operations (PEMDAS/BODMAS). First solve Brackets, then Orders (Exponents), then Division/Multiplication from left to right, and finally Addition/Subtraction.";
-  } else if (query.toLowerCase().includes("science") || query.toLowerCase().includes("molecule")) {
-    answer = "That sounds like a Science question! Atoms combine to form molecules. For example, two hydrogen atoms and one oxygen atom form H2O (water).";
-  } else if (query.toLowerCase().includes("history")) {
-    answer = "History is all about understanding the context of the past. Try to look at the cause-and-effect relationship of the events you're studying!";
+  const nvidiaApiKey = process.env.NVIDIA_API_KEY;
+  const nvidiaBaseUrl = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+  // Use vision model when image is provided, text model otherwise
+  const textModel   = process.env.NVIDIA_MODEL        || 'meta/llama-3.1-70b-instruct';
+  const visionModel = process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-11b-vision-instruct';
+  const nvidiaModel = imageBase64 ? visionModel : textModel;
+
+  // ── Build student context from DB ─────────────────────────
+  let studentContext = '';
+  if (studentId) {
+    try {
+      const [profileRows] = await db.execute(
+        `SELECT u.name, s.dept, s.current_year FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = ?`,
+        [studentId]
+      );
+      const profile = profileRows[0];
+
+      const [attRows] = await db.execute('SELECT status FROM attendance WHERE student_id = ?', [studentId]);
+      let attendancePct = null;
+      if (attRows.length > 0) {
+        const present = attRows.filter(r => r.status === 'Present').length;
+        attendancePct = Math.round((present / attRows.length) * 100);
+      }
+
+      const [markRows] = await db.execute(
+        'SELECT subject, score, max_score, type FROM marks WHERE student_id = ? ORDER BY date DESC LIMIT 10',
+        [studentId]
+      );
+      const avgScore = markRows.length > 0
+        ? Math.round(markRows.reduce((s, m) => s + (m.score / m.max_score) * 100, 0) / markRows.length)
+        : null;
+      const weakSubjects = [...new Set(
+        markRows.filter(m => (m.score / m.max_score) * 100 < 50).map(m => m.subject)
+      )];
+
+      const [assignRows] = await db.execute(
+        `SELECT a.title, a.deadline,
+                (SELECT COUNT(*) FROM submissions s WHERE s.assignment_id = a.id AND s.student_id = ?) AS submitted
+         FROM assignments a
+         JOIN class_enrollments ce ON ce.class_id = a.class_id AND ce.student_id = ?
+         WHERE a.deadline > NOW() ORDER BY a.deadline ASC LIMIT 5`,
+        [studentId, studentId]
+      );
+      const pendingAssignments = assignRows.filter(a => a.submitted === 0);
+
+      const [feeRows] = await db.execute(
+        'SELECT total_fee, paid_amount, (total_fee - paid_amount) AS pending FROM fees WHERE student_id = ?',
+        [studentId]
+      );
+      const fee = feeRows[0];
+
+      if (profile) {
+        studentContext = `
+=== STUDENT PROFILE (Classlytics Live Data) ===
+Name: ${profile.name} | Department: ${profile.dept} | Year: ${profile.current_year}
+Attendance: ${attendancePct !== null ? `${attendancePct}% ${attendancePct < 75 ? '(⚠️ Low)' : '(✅ Good)'}` : 'No data'}
+Average Score: ${avgScore !== null ? `${avgScore}%` : 'No data'}
+Recent Tests: ${markRows.slice(0, 3).map(m => `${m.subject} ${m.type}: ${m.score}/${m.max_score}`).join(', ') || 'None'}
+Weak Subjects: ${weakSubjects.length > 0 ? weakSubjects.join(', ') : 'None identified'}
+Pending Assignments: ${pendingAssignments.length > 0 ? pendingAssignments.map(a => `"${a.title}" (due ${new Date(a.deadline).toLocaleDateString()})`).join(', ') : 'None'}
+Fee Status: ${fee ? `Total ₹${fee.total_fee} | Paid ₹${fee.paid_amount} | Pending ₹${fee.pending}` : 'No data'}
+================================================`;
+      }
+    } catch (ctxErr) {
+      console.warn('[AI Context] Could not fetch student data:', ctxErr.message);
+    }
   }
 
-  res.status(200).json({ 
-    answer,
-    aiModel: "Classlytics-AIBot-v1",
-    timestamp: new Date().toISOString()
-  });
+  const systemPrompt = `You are Classlytics AI — a warm, smart, and highly personalized academic assistant.
+${imageBase64 ? 'The student has shared an assignment image. Analyze it carefully, identify the problem or question, and guide them through solving it step-by-step. Do NOT just give the answer outright — teach the concept.' : ''}
+${studentContext ? `\nYou have real-time access to this student's academic data:\n${studentContext}\n\nUse this data actively. Always address the student by name.` : ''}
+
+Guidelines:
+- Be warm, encouraging, and personalized. Never harsh.
+- Proactively mention weak areas or pending assignments when relevant.
+- Give step-by-step solutions for math/science problems.
+- Keep responses clear and concise (2–4 paragraphs). Use emojis sparingly.
+- Guide students to understand, don't just give answers.`;
+
+  if (!nvidiaApiKey || nvidiaApiKey === 'your_nvidia_api_key_here') {
+    return res.status(200).json({
+      answer: "I'm Classlytics AI! I need a valid NVIDIA API key to analyze images and provide personalized responses.",
+      aiModel: "Classlytics-Fallback-v1",
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // ── Build message content (text + optional image) ──────────
+  let userContent;
+  if (imageBase64) {
+    const mimeType = imageMimeType || 'image/jpeg';
+    userContent = [
+      { type: 'text', text: query || 'Please analyze this assignment image and help me understand and solve it.' },
+      {
+        type: 'image_url',
+        image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+      },
+    ];
+  } else {
+    userContent = query;
+  }
+
+  try {
+    const response = await fetch(`${nvidiaBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${nvidiaApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: nvidiaModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userContent },
+        ],
+        temperature: 0.7,
+        max_tokens: 700,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error('[NVIDIA AI] Error:', response.status, errBody);
+      return res.status(502).json({ error: 'AI service temporarily unavailable.', details: errBody });
+    }
+
+    const data = await response.json();
+    const answer = data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try rephrasing.";
+    const usedModel = data.model || nvidiaModel;
+
+    console.log(`[AI] ${imageBase64 ? '📸 Vision' : '💬 Text'} query answered using ${usedModel}`);
+    res.status(200).json({ answer, aiModel: usedModel, hadImage: !!imageBase64, timestamp: new Date().toISOString() });
+  } catch (err) {
+    console.error('[NVIDIA AI] Fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to reach AI service.', details: err.message });
+  }
+};
+
+exports.getTeacherHelp = async (req, res) => {
+  const { query, teacherId } = req.body;
+
+  if (!query) {
+    return res.status(400).json({ error: "Query is required." });
+  }
+
+  const nvidiaApiKey = process.env.NVIDIA_API_KEY;
+  const nvidiaBaseUrl = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+  const textModel = process.env.NVIDIA_MODEL || 'meta/llama-3.1-70b-instruct';
+
+  let teacherContext = '';
+  if (teacherId) {
+    try {
+      const db = require('../config/db');
+      // Get all classes taught by teacher
+      const [classRows] = await db.execute('SELECT id, name, section FROM classes WHERE teacher_id = ?', [teacherId]);
+      
+      if (classRows.length > 0) {
+        const classIds = classRows.map(c => c.id);
+        const placeholders = classIds.map(() => '?').join(',');
+        
+        // Total students
+        const [enrollRows] = await db.execute(`SELECT COUNT(*) as total FROM class_enrollments WHERE class_id IN (${placeholders})`, classIds);
+        const totalStudents = enrollRows[0].total;
+
+        // Average scores grouped by subject
+        const [marksRows] = await db.execute(`
+            SELECT m.subject, AVG(m.score/m.max_score*100) as avg_score 
+            FROM marks m 
+            JOIN students s ON m.student_id = s.id 
+            JOIN class_enrollments ce ON s.id = ce.student_id
+            WHERE ce.class_id IN (${placeholders})
+            GROUP BY m.subject
+        `, classIds);
+        const subjectStats = marksRows.map(m => `${m.subject}: ${Math.round(m.avg_score)}% avg`).join(', ');
+
+        const classListTxt = classRows.map(c => `${c.name} (Sec ${c.section})`).join(', ');
+
+        teacherContext = `
+=== TEACHER CONTEXT (Classlytics Live Data) ===
+Classes Taught: ${classListTxt}
+Total Students Enrolled: ${totalStudents}
+Subject Performance: ${subjectStats}
+=== END TEACHER CONTEXT ===
+
+`;
+      } else {
+        teacherContext = "No classes assigned yet.\n";
+      }
+    } catch (e) {
+      console.warn('Failed to build teacher context', e);
+    }
+  }
+
+  const userMessage = teacherContext + "TEACHER QUERY: " + query;
+
+  try {
+    const payload = {
+      model: textModel,
+      messages: [
+        { role: 'system', content: 'You are a helpful teaching assistant built into the Classlytics platform. Use the provided context to answer the teacher\'s questions about their classes, students, or suggest teaching strategies. Be concise and professional.' },
+        { role: 'user', content: userMessage }
+      ],
+      temperature: 0.5,
+      max_tokens: 800
+    };
+
+    const response = await fetch(`${nvidiaBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${nvidiaApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      res.status(200).json({ answer: data.choices[0].message.content });
+    } else {
+      res.status(500).json({ error: 'Invalid response from model' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };

@@ -162,3 +162,26 @@ exports.bulkAddStudents = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.getStudentById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await db.execute(
+      `SELECT s.id, u.name, u.email, u.phone, u.address, u.country, u.state, u.district, u.city, 
+              s.dept, s.current_year, s.dob, ce.roll_no
+       FROM students s
+       JOIN users u ON s.user_id = u.id
+       LEFT JOIN class_enrollments ce ON s.id = ce.student_id
+       WHERE s.id = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

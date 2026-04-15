@@ -1,34 +1,43 @@
-const { behaviorLogs } = require('../data/storage');
-const { v4: uuidv4 } = require('uuid');
+const db = require('../config/db');
 
 // POST /student/:studentId/behavior — Add a behavior log
-exports.addBehaviorLog = (req, res) => {
+exports.addBehaviorLog = async (req, res) => {
   const { studentId } = req.params;
-  const { type, remark } = req.body; // type: "positive" | "negative"
+  const { type, remark } = req.body;
 
   if (!type || !remark) {
     return res.status(400).json({ error: 'type and remark are required.' });
   }
-  if (!['positive', 'negative', 'neutral'].includes(type)) {
-    return res.status(400).json({ error: 'type must be positive, negative, or neutral.' });
+
+  const normalizedType = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+  if (!['Positive', 'Negative'].includes(normalizedType)) {
+    return res.status(400).json({ error: 'type must be Positive or Negative.' });
   }
 
-  const log = {
-    id: uuidv4(),
-    studentId,
-    type,
-    remark,
-    date: new Date().toISOString().split('T')[0],
-  };
-
-  behaviorLogs.push(log);
-  console.log(`[BEHAVIOR] Logged "${type}" for student ${studentId}: ${remark}`);
-  res.status(201).json({ message: 'Behavior log added', log });
+  try {
+    const [result] = await db.execute(
+      'INSERT INTO behavior_logs (student_id, type, remark) VALUES (?, ?, ?)',
+      [studentId, normalizedType, remark]
+    );
+    console.log(`[BEHAVIOR] Logged "${type}" for student ${studentId}: ${remark}`);
+    res.status(201).json({ message: 'Behavior log added', log: { id: result.insertId, studentId, type: normalizedType, remark, date: new Date().toISOString() } });
+  } catch (err) {
+    console.error('[addBehaviorLog] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 };
 
 // GET /student/:studentId/behavior — Get all behavior logs for a student
-exports.getBehaviorLogs = (req, res) => {
+exports.getBehaviorLogs = async (req, res) => {
   const { studentId } = req.params;
-  const logs = behaviorLogs.filter(l => l.studentId === studentId);
-  res.status(200).json({ behaviorLogs: logs });
+  try {
+    const [rows] = await db.execute(
+      'SELECT id, student_id, type, remark, date FROM behavior_logs WHERE student_id = ? ORDER BY date DESC',
+      [studentId]
+    );
+    res.status(200).json({ behaviorLogs: rows });
+  } catch (err) {
+    console.error('[getBehaviorLogs] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 };

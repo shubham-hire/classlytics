@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:main_app/core/theme/app_theme.dart';
-import 'active_quiz_screen.dart';
+import '../../../../services/api_service.dart';
+import '../../../../services/auth_store.dart';
+import 'quiz_take_screen.dart';
 
-class QuizListScreen extends StatelessWidget {
+class QuizListScreen extends StatefulWidget {
   const QuizListScreen({super.key});
+
+  @override
+  State<QuizListScreen> createState() => _QuizListScreenState();
+}
+
+class _QuizListScreenState extends State<QuizListScreen> {
+  final ApiService _api = ApiService();
+  late Future<List<dynamic>> _quizzesFuture;
+
+  String get _studentId => AuthStore.instance.studentId;
+
+  @override
+  void initState() {
+    super.initState();
+    _quizzesFuture = _api.fetchStudentQuizzes(_studentId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,45 +33,46 @@ class QuizListScreen extends StatelessWidget {
         foregroundColor: AppTheme.textPrimary,
         elevation: 0.5,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text(
-            'Active Quizzes',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-          ),
-          const SizedBox(height: 16),
-          _buildQuizCard(
-            context,
-            title: 'Algebra Mid Term Quiz',
-            subject: 'Math',
-            duration: '30 mins',
-            questions: 15,
-            isLocked: false,
-            color: Colors.blue,
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            'Upcoming Exams',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-          ),
-          const SizedBox(height: 16),
-          _buildQuizCard(
-            context,
-            title: 'Newtonian Physics Exam',
-            subject: 'Physics',
-            duration: '90 mins',
-            questions: 50,
-            isLocked: true,
-            date: 'Tomorrow, 10:00 AM',
-            color: Colors.orange,
-          ),
-        ],
+      body: FutureBuilder<List<dynamic>>(
+        future: _quizzesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error loading quizzes: ${snapshot.error}'));
+          }
+          final quizzes = snapshot.data ?? [];
+          if (quizzes.isEmpty) {
+            return const Center(child: Text('No quizzes available at the moment.'));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(24),
+            itemCount: quizzes.length,
+            itemBuilder: (context, index) {
+              final quiz = quizzes[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildQuizCard(
+                  context,
+                  quiz: quiz,
+                  color: Colors.blue,
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  Widget _buildQuizCard(BuildContext context, {required String title, required String subject, required String duration, required int questions, required bool isLocked, String? date, required Color color}) {
+  Widget _buildQuizCard(BuildContext context, {required Map<String, dynamic> quiz, required Color color}) {
+    final title = quiz['title'] ?? 'Unknown Quiz';
+    final duration = quiz['duration_minutes'] ?? 30;
+    // We might not have question count in the basic fetch, so just omit it if null or zero
+    final hasSubmitted = quiz['has_submitted'] == true || quiz['has_submitted'] == 1;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -64,9 +83,24 @@ class QuizListScreen extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: isLocked ? null : () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const ActiveQuizScreen()));
-          },
+          onTap: hasSubmitted
+              ? null
+              : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => QuizTakeScreen(
+                        quizId: quiz['id'].toString(),
+                        quizTitle: title,
+                        durationMinutes: duration,
+                      ),
+                    ),
+                  ).then((_) {
+                    setState(() {
+                      _quizzesFuture = _api.fetchStudentQuizzes(_studentId);
+                    });
+                  });
+                },
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -78,10 +112,14 @@ class QuizListScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                      child: Text(subject, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+                      child: Text('Quiz', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
-                    if (isLocked)
-                      const Icon(Icons.lock_rounded, color: AppTheme.textSecondary, size: 20)
+                    if (hasSubmitted)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: const Text('Submitted', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
+                      )
                     else
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -97,23 +135,9 @@ class QuizListScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.timer_outlined, size: 16, color: AppTheme.textSecondary),
                     const SizedBox(width: 4),
-                    Text(duration, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                    const SizedBox(width: 16),
-                    Icon(Icons.format_list_numbered_rounded, size: 16, color: AppTheme.textSecondary),
-                    const SizedBox(width: 4),
-                    Text('$questions qs', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    Text('$duration mins', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                   ],
                 ),
-                if (date != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today_rounded, size: 14, color: AppTheme.textSecondary),
-                      const SizedBox(width: 6),
-                      Text('Starts: $date', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ]
               ],
             ),
           ),
@@ -122,3 +146,4 @@ class QuizListScreen extends StatelessWidget {
     );
   }
 }
+

@@ -64,6 +64,12 @@ const initDb = async () => {
             console.log('📡 [DB MIGRATION] Added column roll_no to class_enrollments');
         } catch (e) { /* already exists */ }
 
+        // Ensure assignments has teacher_id column
+        try {
+            await db.execute('ALTER TABLE assignments ADD COLUMN teacher_id VARCHAR(50)');
+            console.log('📡 [DB MIGRATION] Added column teacher_id to assignments');
+        } catch (e) { /* already exists */ }
+
         for (const c of columnsToEnsure) {
             try {
                 await db.execute(`ALTER TABLE ${c.table} ADD COLUMN ${c.col} ${c.type}`);

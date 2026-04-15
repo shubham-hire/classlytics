@@ -71,18 +71,8 @@ class _StudentTasksScreenState extends State<StudentTasksScreen> {
           builder: (context, snapshot) {
             List<dynamic> allTasks = [];
 
-            // Merge backend tasks with static hardcoded ones (for demo completeness)
-            final staticFallback = [
-              {'title': 'Physics Assignment', 'subject': 'Physics', 'deadline': DateTime.now().add(const Duration(days: 2)).toIso8601String().substring(0, 10)},
-              {'title': 'Math Worksheet', 'subject': 'Math', 'deadline': DateTime.now().add(const Duration(days: 4)).toIso8601String().substring(0, 10)},
-              {'title': 'History Essay', 'subject': 'History', 'deadline': DateTime.now().subtract(const Duration(days: 4)).toIso8601String().substring(0, 10)},
-              {'title': 'Chemistry Lab', 'subject': 'Chemistry', 'deadline': DateTime.now().subtract(const Duration(days: 6)).toIso8601String().substring(0, 10)},
-            ];
-
             if (snapshot.hasData && snapshot.data!.isNotEmpty) {
               allTasks = snapshot.data!;
-            } else {
-              allTasks = staticFallback;
             }
 
             // Apply search filter
@@ -96,6 +86,9 @@ class _StudentTasksScreenState extends State<StudentTasksScreen> {
             final dueSoon   = filtered.where((t) => _getStatus(t['deadline'] ?? '') == 'Due Soon').toList();
             final late      = filtered.where((t) => _getStatus(t['deadline'] ?? '') == 'Late').toList();
 
+            // Note: Currently tracking completed assignments relies on full submission data. Defaulting to empty until wired.
+            final completed = []; 
+
             // Combine pending + due soon for the "Pending" tab
             final pendingTab = [...dueSoon, ...pending];
 
@@ -103,7 +96,7 @@ class _StudentTasksScreenState extends State<StudentTasksScreen> {
               length: 3,
               child: Column(
                 children: [
-                  // Search Bar
+                   // Search Bar
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: TextField(
@@ -187,13 +180,24 @@ class _StudentTasksScreenState extends State<StudentTasksScreen> {
                                       },
                                     ),
 
-                              // Completed tab (static for now)
-                              ListView(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                children: [
-                                  _buildTaskCard(context, 'History Essay', 'History', '10 Apr', 'Completed', Colors.green),
-                                ],
-                              ),
+                              // Completed tab
+                              completed.isEmpty
+                                  ? _buildEmpty('No completed tasks yet.')
+                                  : ListView.builder(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      itemCount: completed.length,
+                                      itemBuilder: (context, index) {
+                                        final task = completed[index];
+                                        return _buildTaskCard(
+                                          context,
+                                          task['title'] ?? 'Assignment',
+                                          task['subject'] ?? 'General',
+                                          task['deadline'] ?? '—',
+                                          'Completed',
+                                          Colors.green,
+                                        );
+                                      },
+                                    ),
 
                               // Late tab
                               late.isEmpty

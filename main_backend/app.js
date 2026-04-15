@@ -12,13 +12,20 @@ const assignmentRoutes = require('./routes/assignmentRoutes');
 const behaviorRoutes = require('./routes/behaviorRoutes');
 const communicationRoutes = require('./routes/communicationRoutes');
 const authRoutes = require('./routes/authRoutes');
+const feeRoutes = require('./routes/feeRoutes');
+const quizRoutes = require('./routes/quizRoutes');
 const initDb = require('./config/initDb');
+const path = require('path');
 
 const app = express();
 const PORT = 3000;
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// Serve uploaded files (assignment media)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Manual CORS + Logging Middleware
 app.use((req, res, next) => {
@@ -47,6 +54,8 @@ app.use('/ai', aiRoutes);
 app.use('/student', behaviorRoutes);
 app.use('/assignments', assignmentRoutes);
 app.use('/communication', communicationRoutes);
+app.use('/fee', feeRoutes);
+app.use('/quizzes', quizRoutes);
 
 // Base route for connectivity check
 app.get('/', (req, res) => {
@@ -54,8 +63,18 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', async () => {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+  let lanIp = 'unknown';
+  for (const iface of Object.values(nets)) {
+    for (const net of iface) {
+      if (net.family === 'IPv4' && !net.internal) { lanIp = net.address; break; }
+    }
+    if (lanIp !== 'unknown') break;
+  }
   console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Also accessible on local network at http://192.168.1.4:${PORT}`);
+  console.log(`Also accessible on local network at http://${lanIp}:${PORT}`);
   // Initialize Database
   await initDb();
 });
+

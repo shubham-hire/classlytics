@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const communicationController = require('../controllers/communicationController');
+const commController = require('../controllers/communicationController');
 
-router.post('/messages', communicationController.sendMessage);
-router.get('/messages/:userId', communicationController.getMessages);
-router.post('/announcements', communicationController.sendAnnouncement);
-router.get('/announcements/:classId', communicationController.getAnnouncements);
+// Messages
+router.post('/messages', commController.sendMessage);
+router.get('/messages/:userId', commController.getMessages);
+router.put('/messages/:messageId/read', commController.markMessageRead);
+
+// Announcements
+router.post('/announcements', commController.sendAnnouncement);
+router.get('/announcements/student/:studentId', commController.getStudentAnnouncements); // Must be BEFORE /:classId
+router.get('/announcements/:classId', commController.getAnnouncements);
+
 
 module.exports = router;
