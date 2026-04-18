@@ -191,6 +191,55 @@ class ApiService {
     }
   }
 
+  Future<void> addStudentWithParent({
+    required String studentName,
+    required String studentEmail,
+    required String parentName,
+    required String relation,
+    required String parentPhone,
+    required String parentEmail,
+    required String address,
+    required String country,
+    required String state,
+    required String district,
+    required String city,
+    required String dept,
+    required String currentYear,
+    required String dob,
+    required String rollNo,
+  }) async {
+    final url = Uri.parse('$_baseUrl/class/create-with-parent'); // Should be /class/create-with-parent or maybe /students ?
+    // Wait, in studentRoutes.js we use router.post('/create-with-parent')
+    // And in app.js, what is the prefix? Wait, I should check app.js to be absolutely sure.
+    // In addStudent, the url is $_baseUrl/class/add
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'studentName': studentName,
+          'studentEmail': studentEmail,
+          'parentName': parentName,
+          'relation': relation,
+          'parentPhone': parentPhone,
+          'parentEmail': parentEmail,
+          'address': address,
+          'country': country,
+          'state': state,
+          'district': district,
+          'city': city,
+          'dept': dept,
+          'currentYear': currentYear,
+          'dob': dob,
+          'rollNo': rollNo,
+        }),
+      );
+      if (response.statusCode != 201) throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to add student with parent');
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
   Future<void> bulkAddStudents(String classId, List<Map<String, String>> studentList) async {
     final url = Uri.parse('$_baseUrl/class/bulk-add');
     try {

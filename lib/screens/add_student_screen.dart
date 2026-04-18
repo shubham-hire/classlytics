@@ -20,6 +20,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   final _addressController = TextEditingController();
   final _dobController = TextEditingController();
   
+  final _parentNameController = TextEditingController();
+  final _parentRelationController = TextEditingController();
+  final _parentPhoneController = TextEditingController();
+  final _parentEmailController = TextEditingController();
+  
   String? _selectedYear;
   String? _selectedDept;
   
@@ -229,6 +234,15 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
               _buildTextField(_addressController, 'Detailed Address / House No.', Icons.home, 'Enter street details', maxLines: 2),
               
+              const SizedBox(height: 16),
+              const Text('Parent / Guardian Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+              const SizedBox(height: 16),
+              
+              _buildTextField(_parentNameController, 'Parent Name', Icons.person, 'Enter parent/guardian name'),
+              _buildDropdown('Relationship', ['Father', 'Mother', 'Guardian'], null, (val) => _parentRelationController.text = val ?? ''),
+              _buildTextField(_parentPhoneController, 'Parent Phone Number', Icons.phone, 'Enter 10-digit number'),
+              _buildTextField(_parentEmailController, 'Parent Email', Icons.email, 'Enter parent email (used for login)', isEmail: true),
+              
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,
@@ -322,23 +336,26 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      await _apiService.addStudentFull(
-        name: _nameController.text,
-        email: _emailController.text,
-        phone: _phoneController.text,
+      await _apiService.addStudentWithParent(
+        studentName: _nameController.text,
+        studentEmail: _emailController.text,
+        parentName: _parentNameController.text,
+        relation: _parentRelationController.text.isEmpty ? 'Guardian' : _parentRelationController.text,
+        parentPhone: _parentPhoneController.text,
+        parentEmail: _parentEmailController.text,
         address: _addressController.text,
         country: _selectedCountry,
         state: _selectedState!,
         district: 'N/A',
         city: _selectedCity!,
-        classId: widget.classId,
         dob: _dobController.text,
         currentYear: _selectedYear!,
         dept: _selectedDept!,
+        rollNo: '', // Will be updated later or passed if needed
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student registered! Temporary password sent to email.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student & Parent registered! Credentials sent to parent email.')));
         Navigator.pop(context, true); 
       }
     } catch (e) {

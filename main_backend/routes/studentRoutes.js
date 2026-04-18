@@ -10,6 +10,7 @@ router.get('/:classId/students', studentController.getStudentsByClass);
 
 // Individual Student management
 router.post('/add', studentController.addStudent);
+router.post('/create-with-parent', studentController.createWithParent);
 router.put('/:id', studentController.updateStudent);
 router.get('/student/:id', studentController.getStudentById);
 
