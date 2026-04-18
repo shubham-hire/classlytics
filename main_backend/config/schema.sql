@@ -45,6 +45,17 @@ CREATE TABLE IF NOT EXISTS students (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Parents Table (Links Parents to Students)
+CREATE TABLE IF NOT EXISTS parents (
+    id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(50),
+    child_id VARCHAR(50), -- Link back to students(id)
+    occupation VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (child_id) REFERENCES students(id) ON DELETE SET NULL
+);
+
 -- Class Enrollments (Links Students to specific Divisions/Subjects)
 CREATE TABLE IF NOT EXISTS class_enrollments (
     class_id VARCHAR(50),

@@ -8,6 +8,9 @@ import 'roles/student_tasks_screen.dart';
 import 'roles/student_stats_screen.dart';
 import 'roles/student_settings_screen.dart';
 import 'roles/notifications_screen.dart';
+import 'roles/parent_tasks_screen.dart';
+import 'roles/parent_analytics_screen.dart';
+import 'roles/parent_settings_screen.dart';
 
 enum UserRole { student, teacher, parent, admin }
 
@@ -30,9 +33,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case UserRole.teacher:
         return _currentIndex == 0 ? const TeacherDashboardScreen() : _buildPlaceholder();
       case UserRole.parent:
-        return _currentIndex == 0 ? const ParentDashboardScreen() : _buildPlaceholder();
+        return _buildParentTabs();
       case UserRole.admin:
         return _currentIndex == 0 ? const AdminDashboardScreen() : _buildPlaceholder();
+    }
+  }
+
+  Widget _buildParentTabs() {
+    switch (_currentIndex) {
+      case 0:
+        return const ParentDashboardScreen();
+      case 1:
+        return const ParentTasksScreen();
+      case 2:
+        return const ParentAnalyticsScreen();
+      case 3:
+        return const ParentSettingsScreen();
+      default:
+        return const ParentDashboardScreen();
     }
   }
 

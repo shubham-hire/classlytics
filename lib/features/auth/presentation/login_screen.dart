@@ -228,6 +228,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    
+                    OutlinedButton.icon(
+                      onPressed: () => context.go('/dashboard', extra: UserRole.parent),
+                      icon: const Icon(Icons.family_restroom_rounded, size: 24),
+                      label: const Text('Parent Dashboard Demo'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.orange.shade50,
+                        side: BorderSide(color: Colors.orange.shade200),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
