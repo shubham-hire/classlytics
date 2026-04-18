@@ -57,16 +57,15 @@ exports.login = async (req, res) => {
             const [student] = await db.execute('SELECT * FROM students WHERE user_id = ?', [user.id]);
             if (student.length > 0) extraInfo = student[0];
         } else if (user.role === 'Parent') {
-            // Fetch student_id from parents table if not present (authenticated via users table)
-            if (!user.student_id) {
-                const [parentData] = await db.execute('SELECT student_id FROM parents WHERE email = ?', [user.email]);
-                if (parentData.length > 0) extraInfo = { student_id: parentData[0].student_id };
-            } else {
-                extraInfo = { student_id: user.student_id };
-            }
+            const [parent] = await db.execute(`
+                SELECT p.*, u.name as child_name 
+                FROM parents p 
+                LEFT JOIN students s ON p.child_id = s.id 
+                LEFT JOIN users u ON s.user_id = u.id 
+                WHERE p.id = ? OR p.user_id = ?
+            `, [user.id, user.id]);
+            if (parent.length > 0) extraInfo = parent[0];
         }
-
-        console.log(`[AUTH] Login successful: ${email} (${user.role})`);
 
         res.status(200).json({
             message: 'Login successful',

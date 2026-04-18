@@ -73,6 +73,9 @@ const IDs = {
   studentUsers: Array.from({ length: 10 }, (_, i) => `uid-student-${String(i+1).padStart(3,'0')}`),
   // Students (STU IDs)
   studentIds: Array.from({ length: 10 }, (_, i) => `STU${String(i+1).padStart(3,'0')}`),
+  // Parent
+  parentUser: 'uid-parent-001',
+  parentId: 'PAR001',
 };
 
 // ─── Data Definitions ────────────────────────────────────────
@@ -108,6 +111,20 @@ const STUDENTS = [
   { name: 'Pooja Desai',    email: 'pooja@test.com',        dept: 'Arts',        year: '11th Grade', dob: '2005-06-28', classIdx: 1, roll: 5 },
 ];
 
+const PARENTS = [
+  {
+    userId: IDs.parentUser,
+    parentId: IDs.parentId,
+    name: 'Vikram Sharma',
+    email: 'parent@test.com',
+    password: 'password123',
+    role: 'Parent',
+    phone: '+91 9123456780',
+    occupation: 'Software Engineer',
+    childId: IDs.studentIds[0], // Linked to Rahul Sharma (STU001)
+  },
+];
+
 // Subjects per class
 const SUBJECTS_10 = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English'];
 const SUBJECTS_11 = ['Mathematics', 'Physics', 'Computer Science', 'English', 'PE'];
@@ -139,13 +156,14 @@ async function cleanDatabase() {
   const tables = [
     'fees', 'submissions', 'assignments', 'behavior_logs',
     'messages', 'announcements', 'marks', 'attendance',
-    'class_enrollments', 'students', 'classes',
+    'class_enrollments', 'parents', 'students', 'classes',
     'global_sequences',
   ];
   // Only delete users that are part of our seed (teachers + students)
   const seedEmails = [
     ...TEACHERS.map(t => t.email),
     ...STUDENTS.map(s => s.email),
+    ...PARENTS.map(p => p.email),
   ];
 
   for (const table of tables) {
@@ -238,6 +256,24 @@ async function seed() {
       ok(`Student: ${s.name} → ${studentId} in ${CLASSES[s.classIdx].name}-${CLASSES[s.classIdx].section} [Roll: ${s.roll}]`);
     } catch (e) {
       warn(`Student ${s.name}: ${e.message}`);
+    }
+  }
+
+  // ─── 4.5 Parents ─────────────────────────────────────────
+  section('Parents');
+  for (const p of PARENTS) {
+    try {
+      await db.execute(
+        'INSERT IGNORE INTO users (id, name, email, password, role, phone) VALUES (?, ?, ?, ?, ?, ?)',
+        [p.userId, p.name, p.email, p.password, p.role, p.phone]
+      );
+      await db.execute(
+        'INSERT IGNORE INTO parents (id, user_id, child_id, occupation) VALUES (?, ?, ?, ?)',
+        [p.parentId, p.userId, p.childId, p.occupation]
+      );
+      ok(`Parent: ${p.name} (${p.email}) → Child: ${p.childId}`);
+    } catch (e) {
+      warn(`Parent ${p.name}: ${e.message}`);
     }
   }
 

@@ -243,8 +243,8 @@ exports.createWithParent = async (req, res) => {
 
     // b) Add to parents table for relationship data
     await connection.execute(
-      'INSERT INTO parents (id, name, relation, phone, email, password, student_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [parentId, parentName, relation || 'Guardian', parentPhone, parentEmail, hashedPassword, null]
+      'INSERT INTO parents (id, user_id, name, relation, phone, email, password, child_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [parentId, parentId, parentName, relation || 'Guardian', parentPhone, parentEmail, hashedPassword, null]
     );
 
     // 4. Create Student User Record (Hashed Password)
@@ -262,7 +262,7 @@ exports.createWithParent = async (req, res) => {
     );
 
     // 6. Update Parent Record with Student ID now that Student exists
-    await connection.execute('UPDATE parents SET student_id = ? WHERE id = ?', [studentId, parentId]);
+    await connection.execute('UPDATE parents SET child_id = ? WHERE id = ?', [studentId, parentId]);
 
     await connection.commit();
 

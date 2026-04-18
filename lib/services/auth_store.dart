@@ -31,4 +31,7 @@ class AuthStore {
 
   /// Get student ID safely
   String get studentId => (_currentUser?['id'] ?? '').toString();
+
+  /// Get child ID safely (for Parents)
+  String get childId => (_currentUser?['child_id'] ?? '').toString();
 }

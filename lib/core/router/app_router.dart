@@ -26,6 +26,7 @@ import '../../screens/teacher_feedback_inbox_screen.dart';
 import '../../screens/digital_library_management_screen.dart';
 import '../../screens/timetable_management_screen.dart';
 import '../../screens/quiz_results_screen.dart';
+import '../../screens/parent_dashboard_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -37,6 +38,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/parent-dashboard',
+      builder: (context, state) => const ParentDashboard(),
     ),
     GoRoute(
       path: '/attendance-management',

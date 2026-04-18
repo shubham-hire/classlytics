@@ -44,6 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
           context.go('/teacher-dashboard');
         } else if (role == 'Student') {
           context.go('/student-dashboard');
+        } else if (role == 'Parent') {
+          context.go('/parent-dashboard');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Login successful as $role. Dashboard coming soon!')),
