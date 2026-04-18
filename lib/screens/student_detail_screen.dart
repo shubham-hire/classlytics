@@ -741,12 +741,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Average Score', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-                  Text('Academic Performance', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Average Score', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                    Text('Academic Performance', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
               ),
               Text(
                 average,
@@ -791,14 +793,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                   ),
                   child: Row(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(record['subject'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(record['date'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(record['subject'], style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                            Text(record['date'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Text(
                         '${record['score']}/100',
                         style: const TextStyle(
@@ -848,13 +852,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           Text('ID: ${widget.studentId}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
           const SizedBox(height: 16),
           // GAP 6: Fee Status Badge
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               _buildHeaderBadge(Icons.check_circle_rounded, 'Fees Paid', Colors.greenAccent.shade700),
-              const SizedBox(width: 12),
               _buildHeaderBadge(Icons.class_rounded, 'Class 10 A', Colors.white70),
-              const SizedBox(width: 12),
               _buildHeaderBadge(Icons.calendar_today_rounded, 'Yr 2026', Colors.white70),
             ],
           ),
@@ -902,12 +906,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Attendance', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-                  Text('Overall Performance', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Attendance', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                    Text('Overall Performance', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
               ),
               Text(
                 percentage,
@@ -986,8 +992,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           const SizedBox(height: 4),
           const Text('Per-subject breakdown', style: TextStyle(color: Colors.grey, fontSize: 12)),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          Wrap(
+            alignment: WrapAlignment.spaceAround,
+            spacing: 16,
+            runSpacing: 16,
             children: subjects.map((s) {
               final pct = s['pct'] as double;
               final color = s['color'] as Color;
@@ -1073,15 +1081,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                         const SizedBox(width: 10),
                         Text(record['date'], style: const TextStyle(fontWeight: FontWeight.w600)),
                         const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            status,
-                            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                        Expanded(
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              status,
+                              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),

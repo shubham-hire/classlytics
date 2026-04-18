@@ -79,8 +79,9 @@ class _GlobalStudentSelectionScreenState extends State<GlobalStudentSelectionScr
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _filterDept ?? 'All',
+                        isExpanded: true,
                         decoration: const InputDecoration(labelText: 'Dept', border: OutlineInputBorder()),
-                        items: _departments.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
+                        items: _departments.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (val) { _filterDept = val; _refreshStudents(); },
                       ),
                     ),
@@ -88,8 +89,9 @@ class _GlobalStudentSelectionScreenState extends State<GlobalStudentSelectionScr
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _filterYear ?? 'All',
+                        isExpanded: true,
                         decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
-                        items: _academicYears.map((y) => DropdownMenuItem(value: y, child: Text(y, style: const TextStyle(fontSize: 12)))).toList(),
+                        items: _academicYears.map((y) => DropdownMenuItem(value: y, child: Text(y, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (val) { _filterYear = val; _refreshStudents(); },
                       ),
                     ),

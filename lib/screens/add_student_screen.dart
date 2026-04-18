@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import '../services/api_service.dart';
 
 class AddStudentScreen extends StatefulWidget {
@@ -157,24 +158,38 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               // States Dropdown
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: DropdownButtonFormField<String>(
-                  value: _selectedStateCode,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'State', 
-                    border: const OutlineInputBorder(), 
-                    prefixIcon: const Icon(Icons.map),
-                    suffixIcon: _isLoadingGeo && _states.isEmpty ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : null,
+                child: DropdownSearch<String>(
+                  popupProps: const PopupProps.menu(
+                    showSearchBox: true,
+                    searchFieldProps: TextFieldProps(
+                      decoration: InputDecoration(
+                        hintText: 'Search state...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                   ),
-                  items: _states.map((s) => DropdownMenuItem(value: s['isoCode'].toString(), child: Text(s['name']))).toList(),
-                  onChanged: (val) {
+                  items: (filter, loadProps) => _states
+                      .map((s) => s['name'].toString())
+                      .where((item) => item.toLowerCase().contains(filter.toLowerCase()))
+                      .toList(),
+                  decoratorProps: DropDownDecoratorProps(
+                    decoration: InputDecoration(
+                      labelText: 'State',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.map),
+                      suffixIcon: _isLoadingGeo && _states.isEmpty ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))) : null,
+                    ),
+                  ),
+                  onSelected: (val) {
                     if (val == null) return;
                     setState(() {
-                      _selectedStateCode = val;
-                      _selectedState = _states.firstWhere((element) => element['isoCode'] == val)['name'];
+                      _selectedState = val;
+                      _selectedStateCode = _states.firstWhere((element) => element['name'] == val)['isoCode'].toString();
                     });
-                    _loadCities(val);
+                    _loadCities(_selectedStateCode!);
                   },
+                  selectedItem: _selectedState,
                   validator: (val) => val == null ? 'Required' : null,
                 ),
               ),
@@ -182,18 +197,33 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               // Cities Dropdown
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: DropdownButtonFormField<String>(
-                  value: _selectedCity,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'City / Village', 
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.location_city),
-                    suffixIcon: _isLoadingGeo && _cities.isEmpty && _selectedStateCode != null ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : null,
+                child: DropdownSearch<String>(
+                  popupProps: const PopupProps.menu(
+                    showSearchBox: true,
+                    searchFieldProps: TextFieldProps(
+                      decoration: InputDecoration(
+                        hintText: 'Search city...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                   ),
-                  items: _cities.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text(c['name']))).toList(),
-                  onChanged: (val) => setState(() => _selectedCity = val),
+                  items: (filter, loadProps) => _cities
+                      .map((c) => c['name'].toString())
+                      .where((item) => item.toLowerCase().contains(filter.toLowerCase()))
+                      .toList(),
+                  decoratorProps: DropDownDecoratorProps(
+                    decoration: InputDecoration(
+                      labelText: 'City / Village',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.location_city),
+                      suffixIcon: _isLoadingGeo && _cities.isEmpty && _selectedStateCode != null ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))) : null,
+                    ),
+                  ),
+                  onSelected: (val) => setState(() => _selectedCity = val),
+                  selectedItem: _selectedCity,
                   validator: (val) => val == null ? 'Required' : null,
+                  enabled: _selectedStateCode != null,
                 ),
               ),
 
