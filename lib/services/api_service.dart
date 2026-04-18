@@ -631,6 +631,17 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> fetchContacts(String userId) async {
+    final url = Uri.parse('$_baseUrl/communication/contacts/$userId');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return (jsonDecode(response.body)['contacts'] as List<dynamic>);
+      throw Exception('Failed to fetch contacts');
+    } catch (e) {
+      throw Exception('Error fetching contacts: $e');
+    }
+  }
+
   Future<void> sendAnnouncement(String classId, String title, String body) async {
     final url = Uri.parse('$_baseUrl/communication/announcements');
     try {

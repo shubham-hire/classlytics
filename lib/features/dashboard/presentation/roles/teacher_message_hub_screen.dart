@@ -15,7 +15,8 @@ class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
   final ApiService _api = ApiService();
   late Future<List<dynamic>> _messagesFuture;
 
-  String get _userId => AuthStore.instance.currentUser?['id'] ?? '';
+  String get _userId =>
+      (AuthStore.instance.currentUser?['user_id'] ?? AuthStore.instance.currentUser?['id'] ?? '').toString();
 
   @override
   void initState() {
@@ -32,7 +33,7 @@ class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Teachers & Mentors',
+        title: const Text('Inbox & Messages',
             style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -43,6 +44,11 @@ class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
             onPressed: () => setState(() => _load()),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showNewChatBottomSheet,
+        backgroundColor: AppTheme.primaryColor,
+        child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _messagesFuture,
@@ -64,13 +70,14 @@ class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
                 : (msg['sender_name'] ?? 'Teacher');
 
             if (!threads.containsKey(otherId) ||
-                (msg['timestamp'] ?? '') > (threads[otherId]!['timestamp'] ?? '')) {
+                (DateTime.tryParse(msg['timestamp'] ?? '') ?? DateTime(0)).isAfter(
+                    DateTime.tryParse(threads[otherId]!['timestamp'] ?? '') ?? DateTime(0))) {
               threads[otherId] = {
                 'otherId': otherId,
                 'otherName': otherName,
                 'lastMessage': msg['body'] ?? '',
                 'timestamp': msg['timestamp'] ?? '',
-                'isRead': msg['is_read'] ?? true,
+                'isRead': msg['is_read'] == 1 || msg['is_read'] == true,
                 'isMine': senderId == _userId,
               };
             }
@@ -86,7 +93,7 @@ class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
                   const Text('No messages yet.',
                       style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
                   const SizedBox(height: 8),
-                  const Text('Start a conversation with your teacher!',
+                  const Text('Tap the button below to start a conversation!',
                       style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                 ],
               ),
@@ -215,6 +222,185 @@ class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
       ),
     );
   }
+
+  void _showNewChatBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return FutureBuilder<List<dynamic>>(
+          future: _api.fetchContacts(_userId),
+          builder: (context, snapshot) {
+            Widget content;
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              content = const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              content = Center(child: Text('Error loading contacts: ${snapshot.error}'));
+            } else if (snapshot.data == null || snapshot.data!.isEmpty) {
+              content = const Center(child: Text('No contacts found.'));
+            } else {
+              content = _ContactSelectionSheet(
+                contacts: snapshot.data!,
+                onSelect: (id, name) {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        otherUserId: id.toString(),
+                        otherName: name,
+                      ),
+                    ),
+                  ).then((_) => setState(() => _load()));
+                },
+              );
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: content,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ContactSelectionSheet extends StatefulWidget {
+  final List<dynamic> contacts;
+  final void Function(String id, String name) onSelect;
+
+  const _ContactSelectionSheet({required this.contacts, required this.onSelect});
+
+  @override
+  State<_ContactSelectionSheet> createState() => _ContactSelectionSheetState();
+}
+
+class _ContactSelectionSheetState extends State<_ContactSelectionSheet> {
+  String _searchQuery = '';
+  String _selectedRole = 'All';
+  
+  final List<String> _roles = ['All', 'Teacher', 'Student'];
+
+  @override
+  Widget build(BuildContext context) {
+    // Filter logic
+    final filteredContacts = widget.contacts.where((contact) {
+      final name = (contact['name'] ?? '').toString().toLowerCase();
+      final role = (contact['role'] ?? '').toString();
+      
+      final matchesSearch = name.contains(_searchQuery);
+      final matchesRole = _selectedRole == 'All' || role == _selectedRole;
+      
+      return matchesSearch && matchesRole;
+    }).toList();
+
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        Container(
+          width: 40,
+          height: 5,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Select Contact',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+        ),
+        
+        // Search & Filter UI
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Column(
+            children: [
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by name...',
+                  prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _roles.map((role) {
+                    final isSelected = _selectedRole == role;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ChoiceChip(
+                        label: Text(role),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) setState(() => _selectedRole = role);
+                        },
+                        selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+                        labelStyle: TextStyle(
+                          color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        
+        Expanded(
+          child: filteredContacts.isEmpty
+              ? const Center(child: Text('No matching contacts found.', style: TextStyle(color: AppTheme.textSecondary)))
+              : ListView.builder(
+                  itemCount: filteredContacts.length,
+                  itemBuilder: (context, index) {
+                    final contact = filteredContacts[index];
+                    final name = contact['name'] ?? 'Unknown';
+                    final role = contact['role'] ?? '';
+                    final id = contact['id'] ?? '';
+                    
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                        child: Text(
+                          name.toString().isNotEmpty ? name.toString()[0].toUpperCase() : 'U',
+                          style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(role, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      onTap: () => widget.onSelect(id.toString(), name.toString()),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
 }
 
 // ─── Individual Chat Screen ──────────────────────────────────────────────────
@@ -241,7 +427,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSending = false;
   bool _isLoading = true;
 
-  String get _myUserId => AuthStore.instance.currentUser?['id'] ?? '';
+  String get _myUserId =>
+      (AuthStore.instance.currentUser?['user_id'] ?? AuthStore.instance.currentUser?['id'] ?? '').toString();
   String get _myName => AuthStore.instance.currentUser?['name'] ?? 'Me';
 
   @override

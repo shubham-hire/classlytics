@@ -20,6 +20,21 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
+// GET /communication/contacts/:userId — Get available users to message
+exports.getContacts = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const [rows] = await db.execute(
+      'SELECT id, name, role FROM users WHERE id != ? ORDER BY role DESC, name ASC',
+      [userId]
+    );
+    res.status(200).json({ contacts: rows });
+  } catch (err) {
+    console.error('[getContacts] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // GET /communication/messages/:userId — Get full inbox + sent for a user
 exports.getMessages = async (req, res) => {
   const { userId } = req.params;

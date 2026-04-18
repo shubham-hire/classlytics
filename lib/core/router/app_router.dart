@@ -19,8 +19,7 @@ import '../../screens/add_student_screen.dart';
 import '../../screens/global_student_selection_screen.dart';
 import '../../screens/student_dashboard.dart';
 import '../../screens/ai_report_generator_screen.dart';
-import '../../screens/teacher_inbox_screen.dart';
-import '../../screens/teacher_chat_screen.dart';
+import '../../features/dashboard/presentation/roles/teacher_message_hub_screen.dart';
 import '../../screens/student_leave_approval_screen.dart';
 import '../../screens/quiz_creator_screen.dart';
 import '../../screens/teacher_feedback_inbox_screen.dart';
@@ -147,15 +146,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/teacher-inbox',
-      builder: (context, state) => const TeacherInboxScreen(),
-    ),
-    GoRoute(
-      path: '/teacher-chat/:studentId/:studentName/:className',
-      builder: (context, state) => TeacherChatScreen(
-        studentId: state.pathParameters['studentId'] ?? '',
-        studentName: Uri.decodeComponent(state.pathParameters['studentName'] ?? 'Student'),
-        className: Uri.decodeComponent(state.pathParameters['className'] ?? 'Class'),
-      ),
+      builder: (context, state) => const TeacherMessageHubScreen(),
     ),
     GoRoute(
       path: '/leave-approvals',

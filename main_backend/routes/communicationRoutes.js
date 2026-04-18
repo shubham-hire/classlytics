@@ -12,5 +12,7 @@ router.post('/announcements', commController.sendAnnouncement);
 router.get('/announcements/student/:studentId', commController.getStudentAnnouncements); // Must be BEFORE /:classId
 router.get('/announcements/:classId', commController.getAnnouncements);
 
+// Contacts
+router.get('/contacts/:userId', commController.getContacts);
 
 module.exports = router;
