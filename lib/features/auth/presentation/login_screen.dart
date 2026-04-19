@@ -69,7 +69,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       final user = result['user'];
       final role = (user['role'] as String).toLowerCase();
 
-      // Persist user data
       AuthStore.instance.setUser(user);
 
       if (mounted) {
@@ -86,7 +85,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: ${e.toString().replaceAll('Exception: Network error: Exception: ', '')}'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Login failed: ${e.toString().replaceAll('Exception: Network error: Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -100,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
+          child: SingleChildScrollView( // ✅ ONLY ONE SCROLL (FIXED)
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -110,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    
                     // Logo
                     Center(
                       child: Container(
@@ -131,8 +134,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 32),
-                    
+
                     const Text(
                       'Welcome to Classlytics',
                       textAlign: TextAlign.center,
@@ -140,113 +144,66 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
-                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Log in to access your dashboard and stay ahead.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: AppTheme.textSecondary,
-                        height: 1.5,
-                      ),
-                    ),
+
                     const SizedBox(height: 48),
 
-                    // Email Field
+                    // Email
                     TextField(
                       controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: 'Email Address',
-                        prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textSecondary),
-                      ),
+                      decoration: const InputDecoration(hintText: 'Email Address'),
                     ),
+
                     const SizedBox(height: 16),
 
-                    // Password Field
+                    // Password
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscureText,
                       decoration: InputDecoration(
                         hintText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: AppTheme.textSecondary),
+                          icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility),
                           onPressed: () => setState(() => _obscureText = !_obscureText),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppTheme.accentColor,
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(50, 30),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Forgot password?',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
+
                     const SizedBox(height: 32),
 
-                    // Login Button
+                    // Sign In
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
                       child: _isLoading
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          ? const CircularProgressIndicator()
                           : const Text('Sign In'),
                     ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Teacher Quick Access
-                    OutlinedButton.icon(
-                      onPressed: () => context.go('/teacher-dashboard'),
-                      icon: const Icon(Icons.admin_panel_settings_rounded, size: 24),
-                      label: const Text('Teacher Dashboard Demo'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: AppTheme.primaryColor.withOpacity(0.05),
-                        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+
                     const SizedBox(height: 12),
-                    
-                    OutlinedButton.icon(
+
+                   
+                    ElevatedButton(
+                      onPressed: () {
+                        context.go('/admin');
+                      },
+                      child: const Text("Go Admin"),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Teacher Demo
+                    OutlinedButton(
+                      onPressed: () => context.go('/teacher-dashboard'),
+                      child: const Text('Teacher Dashboard Demo'),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Parent Demo
+                    OutlinedButton(
                       onPressed: () => context.go('/dashboard', extra: UserRole.parent),
-                      icon: const Icon(Icons.family_restroom_rounded, size: 24),
-                      label: const Text('Parent Dashboard Demo'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orange.shade700,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.orange.shade50,
-                        side: BorderSide(color: Colors.orange.shade200),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('Parent Dashboard Demo'),
                     ),
                   ],
                 ),

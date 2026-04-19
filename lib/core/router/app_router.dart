@@ -27,6 +27,7 @@ import '../../screens/digital_library_management_screen.dart';
 import '../../screens/timetable_management_screen.dart';
 import '../../screens/quiz_results_screen.dart';
 import '../../screens/parent_dashboard_screen.dart';
+import '../../screens/admin_dashboard_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -177,5 +178,9 @@ final GoRouter appRouter = GoRouter(
       path: '/quiz-results',
       builder: (context, state) => const QuizResultsScreen(),
     ),
+    GoRoute(
+  path: '/admin',
+  builder: (context, state) => const AdminDashboardScreen(),
+),
   ],
 );
