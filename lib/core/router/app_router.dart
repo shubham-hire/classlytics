@@ -28,6 +28,13 @@ import '../../screens/timetable_management_screen.dart';
 import '../../screens/quiz_results_screen.dart';
 import '../../screens/parent_dashboard_screen.dart';
 import '../../screens/admin_dashboard_screen.dart';
+import 'package:main_app/screens/student_list_screen1.dart';
+import 'package:main_app/screens/teacher_list_screen.dart';
+import 'package:main_app/screens/announcement_screen.dart';
+
+import '../../screens/add_teacher_screen.dart';
+import 'package:main_app/screens/add_student_in_admin.dart';
+import 'package:main_app/screens/edit_student_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -182,5 +189,32 @@ final GoRouter appRouter = GoRouter(
   path: '/admin',
   builder: (context, state) => const AdminDashboardScreen(),
 ),
+GoRoute(
+  path: '/add-teacher',
+  builder: (context, state) => const AddTeacherScreen(),
+),
+GoRoute(
+  path: '/add-student',
+  builder: (context, state) => const AddStudentInAdmin(),
+),
+
+GoRoute(
+  path: '/students',
+  builder: (context, state) => const StudentListScreen1(),
+),
+GoRoute(
+  path: '/edit-student',
+  builder: (context, state) {
+    final student = state.extra as Map<String, String>;
+    return EditStudentScreen(student: student);
+  },
+),
+GoRoute(
+  path: '/teachers',
+  builder: (context, state) => const TeacherListScreen(),
+),
+
+
   ],
+
 );
