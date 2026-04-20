@@ -14,6 +14,8 @@ const communicationRoutes = require('./routes/communicationRoutes');
 const authRoutes = require('./routes/authRoutes');
 const feeRoutes = require('./routes/feeRoutes');
 const quizRoutes = require('./routes/quizRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const parentRoutes = require('./routes/parentRoutes');
 const initDb = require('./config/initDb');
 const path = require('path');
 
@@ -56,10 +58,12 @@ app.use('/assignments', assignmentRoutes);
 app.use('/communication', communicationRoutes);
 app.use('/fee', feeRoutes);
 app.use('/quizzes', quizRoutes);
+app.use('/chat', chatRoutes);
+app.use('/parent', parentRoutes);
 
 // Base route for connectivity check
 app.get('/', (req, res) => {
-  res.send('Classlytics Teacher API is running...');
+  res.send('Classlytics API is running...');
 });
 
 app.listen(PORT, '0.0.0.0', async () => {

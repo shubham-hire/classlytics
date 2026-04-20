@@ -669,6 +669,37 @@ class ApiService {
     }
   }
 
+  /// Send a message through the unified AI-aware chat endpoint.
+  /// If the message contains @classAI, the backend will:
+  ///  - optionally fetch student context (@STU001 mentions)
+  ///  - call the NVIDIA LLM
+  ///  - save both messages and return { ai: true, response: "..." }
+  /// Otherwise returns { ai: false, status: 'sent' }.
+  Future<Map<String, dynamic>> sendChatMessage({
+    required String from,
+    required String to,
+    required String body,
+    String? role,
+  }) async {
+    final url = Uri.parse('$_baseUrl/chat/message');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'from': from,
+          'to': to,
+          'body': body,
+          if (role != null) 'role': role,
+        }),
+      );
+      if (response.statusCode == 201) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Chat message failed: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error sending chat message: $e');
+    }
+  }
+
   Future<List<dynamic>> fetchMessages(String userId) async {
     final url = Uri.parse('$_baseUrl/communication/messages/$userId');
     try {
@@ -699,12 +730,93 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'classId': classId, 'title': title, 'body': body}),
       );
-      if (response.statusCode != 201) throw Exception('Announcement failed');
+      if (response.statusCode != 201) throw Exception('Failed to send announcement');
     } catch (e) {
       throw Exception('Error sending announcement: $e');
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // PARENT ACTIONS
+  // ---------------------------------------------------------------------------
+  
+  Future<void> submitLeaveRequest({
+    required String userId,
+    required String studentId,
+    required String startDate,
+    required String endDate,
+    required String reason,
+  }) async {
+    final url = Uri.parse('$_baseUrl/parent/leave-request');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'studentId': studentId,
+          'startDate': startDate,
+          'endDate': endDate,
+          'reason': reason,
+        }),
+      );
+      if (response.statusCode != 201) throw Exception('Failed to submit leave request');
+    } catch (e) {
+      throw Exception('Error submitting leave request: $e');
+    }
+  }
+
+  Future<List<dynamic>> getLeaveRequests(String studentId) async {
+    final url = Uri.parse('$_baseUrl/parent/leave-requests/$studentId');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return (jsonDecode(response.body)['requests'] as List<dynamic>);
+      throw Exception('Failed to fetch leave requests');
+    } catch (e) {
+      throw Exception('Error fetching leave requests: $e');
+    }
+  }
+
+  Future<String> generateHomeStudyPlan(String studentId) async {
+    final url = Uri.parse('$_baseUrl/parent/study-plan');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'studentId': studentId}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['plan'] ?? 'No plan generated.';
+      }
+      throw Exception('Failed to generate study plan');
+    } catch (e) {
+      throw Exception('Error generating study plan: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchChildInfo(String parentId) async {
+    final url = Uri.parse('$_baseUrl/parent/child-info/$parentId');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to fetch child info');
+    } catch (e) {
+      throw Exception('Error fetching child info: $e');
+    }
+  }
+
+  Future<String> fetchWeeklySummary(String studentId) async {
+    final url = Uri.parse('$_baseUrl/parent/weekly-summary/$studentId');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['summary'] ?? 'Summary not available.';
+      }
+      throw Exception('Failed to fetch weekly summary');
+    } catch (e) {
+      throw Exception('Error fetching weekly summary: $e');
+    }
+  }
   Future<List<dynamic>> fetchAnnouncements(String classId) async {
     final url = Uri.parse('$_baseUrl/communication/announcements/$classId');
     try {

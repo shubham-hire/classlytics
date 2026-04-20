@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
 
 class NoticeBoardScreen extends StatelessWidget {
   const NoticeBoardScreen({super.key});

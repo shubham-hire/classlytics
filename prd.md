@@ -3,7 +3,7 @@
 
 Product Name (working)
 
-StudentSafe AI (change later if you find something sharper)
+Classlytics (renamed from StudentSafe AI)
 
 ⸻
 

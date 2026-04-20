@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
 import 'roles/admin_dashboard_screen.dart';
 import 'roles/parent_dashboard_screen.dart';
 import 'roles/teacher_dashboard_screen.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_store.dart';
 import 'detailed_analytics_screen.dart';
@@ -114,14 +114,14 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                     _buildModuleButton(context, 'Notice Board', Icons.campaign_rounded, Colors.red, () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const NoticeBoardScreen()));
                     }),
+                    _buildModuleButton(context, 'Leave Requests', Icons.event_busy_rounded, Colors.teal, () {
+                      _showLeaveRequestsDialog();
+                    }),
                     _buildModuleButton(context, 'Result Analysis', Icons.insights_rounded, Colors.green, () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const DetailedAnalyticsScreen()));
                     }),
                     _buildModuleButton(context, 'Certificates', Icons.card_membership_rounded, Colors.amber.shade600, () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const CertificatesScreen()));
-                    }),
-                    _buildModuleButton(context, 'Feedback', Icons.feedback_rounded, AppTheme.primaryColor, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const FeedbackScreen()));
                     }),
                   ],
                 ),
@@ -138,6 +138,91 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showLeaveRequestsDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.red.shade400,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.event_busy_rounded, color: Colors.white, size: 28),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('Leave Requests', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  )
+                ],
+              ),
+            ),
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: _apiService.getLeaveRequests(_studentId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final requests = snapshot.data ?? [];
+                  if (requests.isEmpty) {
+                    return const Center(child: Text('No leave requests found.', style: TextStyle(color: AppTheme.textSecondary)));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: requests.length,
+                    itemBuilder: (context, index) {
+                      final req = requests[index];
+                      Color statusColor = Colors.orange;
+                      if (req['status'] == 'Approved') statusColor = Colors.green;
+                      if (req['status'] == 'Rejected') statusColor = Colors.red;
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                        color: Colors.grey.shade50,
+                        child: ListTile(
+                          title: Text('${req['start_date'].split('T')[0]} to ${req['end_date'].split('T')[0]}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(req['reason']),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(req['status'], style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

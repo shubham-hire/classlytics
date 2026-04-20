@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart' as image_picker;
-import 'package:main_app/core/theme/app_theme.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_store.dart';
 
