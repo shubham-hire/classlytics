@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/api_service.dart';
 import '../../../core/theme/app_theme.dart';
+import 'user_filter_widget.dart';
 
 class UserListScreen extends StatefulWidget {
   const UserListScreen({super.key});
@@ -18,7 +19,9 @@ class _UserListScreenState extends State<UserListScreen> {
 
   // Filters
   String _roleFilter = '';
+  String _deptFilter = '';
   String _statusFilter = '';
+  String _sortFilter = '';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -39,6 +42,7 @@ class _UserListScreenState extends State<UserListScreen> {
     try {
       final data = await _api.fetchAdminUsers(
         role: _roleFilter,
+        dept: _deptFilter,
         status: _statusFilter,
         search: _searchQuery,
       );
@@ -46,6 +50,18 @@ class _UserListScreenState extends State<UserListScreen> {
         setState(() {
           _users = data['users'] as List<dynamic>;
           _total = data['total'] as int;
+
+          // Client-side sorting fallback
+          if (_sortFilter == 'name_asc') {
+            _users.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+          } else if (_sortFilter == 'name_desc') {
+            _users.sort((a, b) => (b['name'] ?? '').compareTo(a['name'] ?? ''));
+          } else if (_sortFilter == 'newest') {
+            _users.sort((a, b) => (b['id'] ?? '').toString().compareTo((a['id'] ?? '').toString()));
+          } else if (_sortFilter == 'oldest') {
+            _users.sort((a, b) => (a['id'] ?? '').toString().compareTo((b['id'] ?? '').toString()));
+          }
+
           _loading = false;
         });
       }
@@ -109,6 +125,46 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
+  void _showAddUserRoleDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Select User Type'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _roleDialogOption('Student', Icons.school_rounded, const Color(0xFF3B82F6), () {
+              Navigator.pop(ctx);
+              context.push('/add-student/GLOBAL');
+            }),
+            _roleDialogOption('Teacher', Icons.person_rounded, const Color(0xFF10B981), () {
+              Navigator.pop(ctx);
+              context.push('/admin/users/new');
+            }),
+            _roleDialogOption('Parent', Icons.family_restroom_rounded, const Color(0xFFF59E0B), () {
+              Navigator.pop(ctx);
+              context.push('/admin/users/new');
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roleDialogOption(String label, IconData icon, Color color, VoidCallback onTap) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: color, size: 24),
+      ),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
   Color _roleColor(String role) {
     switch (role) {
       case 'Student': return const Color(0xFF3B82F6);
@@ -146,7 +202,7 @@ class _UserListScreenState extends State<UserListScreen> {
           IconButton(
             icon: const Icon(Icons.person_add_rounded),
             tooltip: 'Add User',
-            onPressed: () => context.go('/admin/users/new'),
+            onPressed: _showAddUserRoleDialog,
           ),
           IconButton(
             icon: const Icon(Icons.upload_file_rounded),
@@ -157,61 +213,57 @@ class _UserListScreenState extends State<UserListScreen> {
       ),
       body: Column(
         children: [
-          // ─── SEARCH + FILTERS ───
+          // ─── SEARCH ───
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-            child: Column(
-              children: [
-                // Search bar
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, email, or ID...',
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                              _loadUsers();
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onSubmitted: (value) {
-                    setState(() => _searchQuery = value.trim());
-                    _loadUsers();
-                  },
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search by name, email, or ID...',
+                prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                          _loadUsers();
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: const Color(0xFFF1F5F9),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
                 ),
-                const SizedBox(height: 10),
-                // Filter chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _filterChip('All', '', isRole: true),
-                      _filterChip('Student', 'Student', isRole: true),
-                      _filterChip('Teacher', 'Teacher', isRole: true),
-                      _filterChip('Parent', 'Parent', isRole: true),
-                      _filterChip('Admin', 'Admin', isRole: true),
-                      const SizedBox(width: 12),
-                      Container(width: 1, height: 24, color: Colors.grey.shade300),
-                      const SizedBox(width: 12),
-                      _filterChip('Active', 'active', isRole: false),
-                      _filterChip('Inactive', 'inactive', isRole: false),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+              onSubmitted: (value) {
+                setState(() => _searchQuery = value.trim());
+                _loadUsers();
+              },
+            ),
+          ),
+
+          // ─── FILTERS ───
+          Container(
+            color: Colors.white,
+            child: UserFilterWidget(
+              selectedRole: _roleFilter,
+              selectedDept: _deptFilter,
+              selectedStatus: _statusFilter,
+              selectedSort: _sortFilter,
+              onFiltersChanged: (role, dept, status, sort) {
+                setState(() {
+                  _roleFilter = role;
+                  _deptFilter = dept;
+                  _statusFilter = status;
+                  _sortFilter = sort;
+                });
+                _loadUsers();
+              },
             ),
           ),
 
@@ -266,41 +318,6 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  Widget _filterChip(String label, String value, {required bool isRole}) {
-    final isSelected = isRole ? _roleFilter == value : _statusFilter == value;
-    final color = isRole && value.isNotEmpty ? _roleColor(value) : const Color(0xFF64748B);
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: FilterChip(
-        label: Text(label, style: TextStyle(
-          color: isSelected ? Colors.white : color,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        )),
-        selected: isSelected,
-        onSelected: (selected) {
-          setState(() {
-            if (isRole) {
-              _roleFilter = selected ? value : '';
-            } else {
-              _statusFilter = selected ? value : '';
-            }
-          });
-          _loadUsers();
-        },
-        backgroundColor: Colors.white,
-        selectedColor: isRole && value.isNotEmpty ? color : const Color(0xFF64748B),
-        checkmarkColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade300),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      ),
-    );
-  }
-
   Widget _userCard(Map<String, dynamic> user) {
     final role = (user['role'] as String?) ?? 'Unknown';
     final isActive = user['is_active'] == 1 || user['is_active'] == true || user['is_active'] == null;
@@ -327,7 +344,7 @@ class _UserListScreenState extends State<UserListScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
-            final result = await context.push('/admin/users/edit/${user['id']}');
+            final result = await context.push('/admin/users/profile/${user['id']}');
             if (result == true) _loadUsers();
           },
           child: Padding(
@@ -409,7 +426,11 @@ class _UserListScreenState extends State<UserListScreen> {
                   icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   onSelected: (value) {
-                    if (value == 'edit') {
+                    if (value == 'view') {
+                      context.push('/admin/users/profile/${user['id']}').then((result) {
+                        if (result == true) _loadUsers();
+                      });
+                    } else if (value == 'edit') {
                       context.push('/admin/users/edit/${user['id']}').then((result) {
                         if (result == true) _loadUsers();
                       });
@@ -420,6 +441,9 @@ class _UserListScreenState extends State<UserListScreen> {
                     }
                   },
                   itemBuilder: (ctx) => [
+                    const PopupMenuItem(value: 'view', child: Row(
+                      children: [Icon(Icons.visibility_rounded, size: 18), SizedBox(width: 8), Text('View Profile')],
+                    )),
                     const PopupMenuItem(value: 'edit', child: Row(
                       children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Edit')],
                     )),

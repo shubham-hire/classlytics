@@ -22,4 +22,13 @@ router.post('/users/bulk', adminController.bulkCreateUsers);
 router.get('/classes', adminController.getClasses);
 router.get('/students/list', adminController.getStudentsList);
 
+// Teacher CRUD
+const teacherAdminController = require('../controllers/teacherAdminController');
+const upload = require('../config/upload');
+router.post('/teachers', upload.single('profile_img'), teacherAdminController.createTeacher);
+router.get('/teachers', teacherAdminController.getTeachers);
+router.get('/teachers/:id', teacherAdminController.getTeacherById);
+router.put('/teachers/:id', upload.single('profile_img'), teacherAdminController.updateTeacher);
+router.delete('/teachers/:id', teacherAdminController.deleteTeacher);
+
 module.exports = router;

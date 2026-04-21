@@ -19,6 +19,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _dobController = TextEditingController();
+  final _rollNoController = TextEditingController();
   
   final _parentNameController = TextEditingController();
   final _parentRelationController = TextEditingController();
@@ -27,6 +28,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   
   String? _selectedYear;
   String? _selectedDept;
+  String? _selectedClassId;
   
   String? _selectedState;
   String? _selectedStateCode;
@@ -35,6 +37,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
   List<dynamic> _states = [];
   List<dynamic> _cities = [];
+  List<dynamic> _classes = [];
   bool _isLoadingGeo = false;
   String? _geoError;
 
@@ -59,7 +62,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedClassId = widget.classId == 'GLOBAL' ? null : widget.classId;
     _loadStates();
+    if (widget.classId == 'GLOBAL') {
+      _loadClasses();
+    }
   }
 
   Future<void> _loadStates() async {
@@ -68,12 +75,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       _geoError = null;
     });
     try {
-      debugPrint('DEBUG: Fetching states from API...');
       final states = await _apiService.fetchStates();
-      debugPrint('DEBUG: Received ${states.length} states');
       setState(() => _states = states);
     } catch (e) {
-      debugPrint('DEBUG: State fetch error: $e');
       setState(() => _geoError = 'Failed to load states: $e');
     } finally {
       setState(() => _isLoadingGeo = false);
@@ -87,15 +91,21 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       _selectedCity = null;
     });
     try {
-      debugPrint('DEBUG: Fetching cities for $stateCode...');
       final cities = await _apiService.fetchCities(stateCode);
-      debugPrint('DEBUG: Received ${cities.length} cities');
       setState(() => _cities = cities);
     } catch (e) {
-      debugPrint('DEBUG: City fetch error: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load cities: $e')));
     } finally {
       setState(() => _isLoadingGeo = false);
+    }
+  }
+
+  Future<void> _loadClasses() async {
+    try {
+      final classes = await _apiService.fetchAdminClasses();
+      setState(() => _classes = classes);
+    } catch (e) {
+      debugPrint('Error loading classes: $e');
     }
   }
 
@@ -142,6 +152,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               const SizedBox(height: 16),
               const Text('Academic Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
               const SizedBox(height: 16),
+              
+              if (widget.classId == 'GLOBAL')
+                _buildClassDropdown(),
+
+              _buildTextField(_rollNoController, 'Roll Number', Icons.numbers, 'Enter roll number'),
               _buildDropdown('Department', _departments, _selectedDept, (val) => setState(() => _selectedDept = val)),
               _buildDropdown('Current Year', _academicYears, _selectedYear, (val) => setState(() => _selectedYear = val)),
               
@@ -273,6 +288,29 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     );
   }
 
+  Widget _buildClassDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: DropdownButtonFormField<String>(
+        value: _selectedClassId,
+        decoration: InputDecoration(
+          labelText: 'Assign to Class',
+          prefixIcon: const Icon(Icons.class_rounded, color: Color(0xFF1E3A8A)),
+          filled: true,
+          fillColor: Colors.blueGrey.shade50,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        ),
+        isExpanded: true,
+        items: _classes.map((c) => DropdownMenuItem(
+          value: c['id'] as String,
+          child: Text('${c['name']} - ${c['section']}'),
+        )).toList(),
+        onChanged: (val) => setState(() => _selectedClassId = val),
+        validator: (val) => val == null ? 'Required' : null,
+      ),
+    );
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -348,11 +386,11 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         state: _selectedState!,
         district: 'N/A',
         city: _selectedCity!,
-        classId: widget.classId,
+        classId: _selectedClassId!,
         dob: _dobController.text,
         currentYear: _selectedYear!,
         dept: _selectedDept!,
-        rollNo: '', // Will be updated later or passed if needed
+        rollNo: _rollNoController.text,
       );
 
       if (mounted) {

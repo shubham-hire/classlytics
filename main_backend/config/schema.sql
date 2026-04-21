@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS global_sequences (
 );
 
 INSERT IGNORE INTO global_sequences (name, `last_value`) VALUES ('student', 0);
-
+INSERT IGNORE INTO global_sequences (name, `last_value`) VALUES ('teacher', 0);
 -- Users Table (Handles Admin, Teacher, Student, Parent)
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(50) PRIMARY KEY,
@@ -22,6 +22,32 @@ CREATE TABLE IF NOT EXISTS users (
     city VARCHAR(100),
     dept VARCHAR(50), -- Added for Teachers/Admins to manage students in same dept
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Teachers Table (Extension of Users for Teachers)
+CREATE TABLE IF NOT EXISTS teachers (
+    id VARCHAR(50) PRIMARY KEY, -- Permanent Sequential ID (e.g. TCH001)
+    user_id VARCHAR(50) NOT NULL,
+    employee_id VARCHAR(50) UNIQUE NOT NULL,
+    department VARCHAR(100),
+    designation VARCHAR(50) NOT NULL,
+    joining_date DATE,
+    employment_type ENUM('Full-time', 'Part-time', 'Contract') DEFAULT 'Full-time',
+    qualification VARCHAR(255),
+    specialization VARCHAR(255),
+    experience_years INT DEFAULT 0,
+    previous_school VARCHAR(255),
+    gender ENUM('Male', 'Female', 'Other'),
+    dob DATE,
+    profile_img VARCHAR(255),
+    subjects TEXT, -- JSON array of subjects
+    classes TEXT, -- JSON array of class IDs
+    salary_structure_id VARCHAR(50),
+    bank_account_no VARCHAR(50),
+    bank_ifsc VARCHAR(20),
+    emergency_contact VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Classes Table
@@ -211,7 +237,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
 );
 
--- Fees Table
+-- Fees Table (flat per-student record - used by parent dashboard)
 CREATE TABLE IF NOT EXISTS fees (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id VARCHAR(50) NOT NULL,
@@ -220,5 +246,54 @@ CREATE TABLE IF NOT EXISTS fees (
     due_date DATE,
     semester VARCHAR(20) DEFAULT 'Sem 1',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+);
+
+-- Fee Structures Table (Admin-defined templates per class + academic year)
+CREATE TABLE IF NOT EXISTS fee_structures (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    class_id VARCHAR(50) NOT NULL,
+    academic_year VARCHAR(20) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    tuition_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    exam_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    transport_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    library_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    sports_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    miscellaneous_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    due_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_class_year (class_id, academic_year)
+);
+
+-- Student Fee Assignments (links a student to a fee structure)
+CREATE TABLE IF NOT EXISTS student_fee_assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(50) NOT NULL,
+    fee_structure_id INT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    status ENUM('Pending', 'Partial', 'Paid', 'Overdue') DEFAULT 'Pending',
+    due_date DATE,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_student_structure (student_id, fee_structure_id),
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (fee_structure_id) REFERENCES fee_structures(id) ON DELETE CASCADE
+);
+
+-- Fee Payments (logs each individual payment transaction)
+CREATE TABLE IF NOT EXISTS fee_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    assignment_id INT NOT NULL,
+    student_id VARCHAR(50) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_mode ENUM('Cash', 'Online', 'Cheque', 'DD', 'Simulated') DEFAULT 'Cash',
+    reference_no VARCHAR(100),
+    note TEXT,
+    paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (assignment_id) REFERENCES student_fee_assignments(id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 );

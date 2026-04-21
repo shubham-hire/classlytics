@@ -17,6 +17,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
   late Future<Map<String, dynamic>> _marksFuture;
   late Future<List<dynamic>> _announcementsFuture;
   late Future<List<dynamic>> _assignmentsFuture;
+  late Future<Map<String, dynamic>> _feesFuture;
 
   // Read authenticated user (Parent) from AuthStore
   Map<String, dynamic> get _user => AuthStore.instance.currentUser ?? {};
@@ -36,11 +37,13 @@ class _ParentDashboardState extends State<ParentDashboard> {
       _marksFuture = _apiService.fetchMarks(_childId);
       _announcementsFuture = _apiService.fetchStudentAnnouncements(_childId);
       _assignmentsFuture = _apiService.fetchStudentAssignments(_childId);
+      _feesFuture = _apiService.fetchChildFees(_childId);
     } else {
       _attendanceFuture = Future.value({});
       _marksFuture = Future.value({});
       _announcementsFuture = Future.value([]);
       _assignmentsFuture = Future.value([]);
+      _feesFuture = Future.value({'summary': {}, 'assignments': []});
     }
   }
 
@@ -104,11 +107,15 @@ class _ParentDashboardState extends State<ParentDashboard> {
               ),
               const SizedBox(height: 32),
 
-              // 3. Upcoming Assignments
+              // 3. Fee Summary Card
+              _buildFeeSummaryCard(),
+              const SizedBox(height: 24),
+
+              // 4. Upcoming Assignments
               _buildAssignmentsSection(),
               const SizedBox(height: 32),
 
-              // 4. Announcements
+              // 5. Announcements
               _buildAnnouncementsSection(),
               const SizedBox(height: 32),
             ],
@@ -120,9 +127,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
         selectedItemColor: const Color(0xFF1E3A8A),
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
+        onTap: (i) {
+          if (i == 1) context.go('/parent/fees');
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month_rounded), label: 'Schedule'),
+          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_rounded), label: 'Fees'),
           BottomNavigationBarItem(icon: Icon(Icons.forum_rounded), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Profile'),
         ],
@@ -171,6 +181,109 @@ class _ParentDashboardState extends State<ParentDashboard> {
       },
     );
   }
+
+  Widget _buildFeeSummaryCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SharedUIComponents.buildSectionTitle('Fees Overview'),
+        const SizedBox(height: 16),
+        FutureBuilder<Map<String, dynamic>>(
+          future: _feesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Container(
+                height: 100,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                child: const Center(child: CircularProgressIndicator()),
+              );
+            }
+            final summary = (snapshot.data?['summary'] as Map?)?.cast<String, dynamic>() ?? {};
+            final assignments = (snapshot.data?['assignments'] as List?) ?? [];
+            final totalDue = double.tryParse(summary['totalDue']?.toString() ?? '0') ?? 0;
+            final totalPaid = double.tryParse(summary['totalPaid']?.toString() ?? '0') ?? 0;
+            final totalPending = double.tryParse(summary['totalPending']?.toString() ?? '0') ?? 0;
+            final progress = totalDue > 0 ? (totalPaid / totalDue).clamp(0.0, 1.0) : 0.0;
+
+            return GestureDetector(
+              onTap: () => context.go('/parent/fees'),
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [BoxShadow(color: const Color(0xFF1E3A8A).withOpacity(0.25), blurRadius: 16, offset: const Offset(0, 6))],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Total Fees', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                            Text(
+                              '₹${totalDue >= 1000 ? '${(totalDue / 1000).toStringAsFixed(1)}k' : totalDue.toStringAsFixed(0)}',
+                              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            _feeMiniStat('Paid', totalPaid, const Color(0xFF34D399)),
+                            const SizedBox(width: 16),
+                            _feeMiniStat('Due', totalPending, const Color(0xFFFCA5A5)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 7,
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        valueColor: const AlwaysStoppedAnimation(Color(0xFF34D399)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('${(progress * 100).toStringAsFixed(0)}% paid', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        Row(children: [
+                          const Text('View Details', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Colors.white70),
+                        ]),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _feeMiniStat(String label, double amount, Color color) => Column(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+      Text(
+        '₹${amount >= 1000 ? '${(amount / 1000).toStringAsFixed(1)}k' : amount.toStringAsFixed(0)}',
+        style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w800),
+      ),
+    ],
+  );
 
   Widget _buildAssignmentsSection() {
     return Column(

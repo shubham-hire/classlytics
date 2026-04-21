@@ -57,7 +57,8 @@ app.use('/ai', aiRoutes);
 app.use('/student', behaviorRoutes);
 app.use('/assignments', assignmentRoutes);
 app.use('/communication', communicationRoutes);
-app.use('/fee', feeRoutes);
+app.use('/fee', feeRoutes);         // Legacy (parent fee status)
+app.use('/api/fees', feeRoutes);    // New structured endpoint
 app.use('/quizzes', quizRoutes);
 app.use('/chat', chatRoutes);
 app.use('/parent', parentRoutes);

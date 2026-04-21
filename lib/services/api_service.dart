@@ -1170,4 +1170,322 @@ class ApiService {
       throw Exception('Error fetching students list: $e');
     }
   }
+
+  // ==============================
+  // FEE STRUCTURE (Admin)
+  // ==============================
+
+  Future<List<dynamic>> fetchFeeStructures({String? classId, String? academicYear}) async {
+    final params = <String, String>{};
+    if (classId != null && classId.isNotEmpty) params['class_id'] = classId;
+    if (academicYear != null && academicYear.isNotEmpty) params['academic_year'] = academicYear;
+    final uri = Uri.parse('$_baseUrl/api/fees/structure').replace(queryParameters: params.isEmpty ? null : params);
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch fee structures');
+    } catch (e) {
+      throw Exception('Error fetching fee structures: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchFeeStructureById(int id) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/structure/$id');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Fee structure not found');
+    } catch (e) {
+      throw Exception('Error fetching fee structure: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> createFeeStructure(Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/structure');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 201) return jsonDecode(response.body);
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Failed to create fee structure');
+    } catch (e) {
+      throw Exception('Error creating fee structure: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateFeeStructure(int id, Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/structure/$id');
+    try {
+      final response = await http.put(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Failed to update fee structure');
+    } catch (e) {
+      throw Exception('Error updating fee structure: $e');
+    }
+  }
+
+  Future<void> deleteFeeStructure(int id) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/structure/$id');
+    try {
+      final response = await http.delete(uri);
+      if (response.statusCode != 200) {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'Failed to delete fee structure');
+      }
+    } catch (e) {
+      throw Exception('Error deleting fee structure: $e');
+    }
+  }
+
+  // ==============================
+  // FEE ASSIGNMENTS (Admin - Module 2)
+  // ==============================
+
+  Future<List<dynamic>> fetchFeeAssignments({String? classId, String? status, String? studentId}) async {
+    final params = <String, String>{};
+    if (classId != null && classId.isNotEmpty) params['class_id'] = classId;
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    if (studentId != null && studentId.isNotEmpty) params['student_id'] = studentId;
+    final uri = Uri.parse('$_baseUrl/api/fees/assignments').replace(queryParameters: params.isEmpty ? null : params);
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch fee assignments');
+    } catch (e) {
+      throw Exception('Error fetching fee assignments: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchStudentFeeAssignments(String studentId) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/assignments/student/$studentId');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch student fee assignments');
+    } catch (e) {
+      throw Exception('Error fetching student fee assignments: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> assignFeeToStudent(String studentId, int feeStructureId) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/assignments');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'student_id': studentId, 'fee_structure_id': feeStructureId}),
+      );
+      if (response.statusCode == 201) return jsonDecode(response.body);
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Failed to assign fee');
+    } catch (e) {
+      throw Exception('Error assigning fee: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> bulkAssignFeeByClass(int feeStructureId) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/assignments/bulk');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'fee_structure_id': feeStructureId}),
+      );
+      if (response.statusCode == 201) return jsonDecode(response.body);
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Failed to bulk assign fees');
+    } catch (e) {
+      throw Exception('Error bulk assigning fees: $e');
+    }
+  }
+
+  Future<void> removeFeeAssignment(int assignmentId) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/assignments/$assignmentId');
+    try {
+      final response = await http.delete(uri);
+      if (response.statusCode != 200) {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'Failed to remove assignment');
+      }
+    } catch (e) {
+      throw Exception('Error removing fee assignment: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchPaymentHistory(int assignmentId) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/assignments/$assignmentId/payments');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch payment history');
+    } catch (e) {
+      throw Exception('Error fetching payment history: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> recordFeePayment(int assignmentId, double amount, String mode, {String? referenceNo, String? note}) async {
+    final uri = Uri.parse('$_baseUrl/api/fees/assignments/$assignmentId/payment');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'amount': amount,
+          'payment_mode': mode,
+          'reference_no': referenceNo,
+          'note': note,
+        }),
+      );
+      if (response.statusCode == 201) return jsonDecode(response.body);
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Failed to record payment');
+    } catch (e) {
+      throw Exception('Error recording payment: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchFeeReports() async {
+    final uri = Uri.parse('$_baseUrl/api/fees/reports');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch fee reports');
+    } catch (e) {
+      throw Exception('Error fetching fee reports: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchFeeInsights() async {
+    final uri = Uri.parse('$_baseUrl/api/fees/insights');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch AI insights');
+    } catch (e) {
+      throw Exception('Error fetching AI insights: $e');
+    }
+  }
+
+  // ==============================
+  // ADMIN TEACHER MANAGEMENT
+  // ==============================
+
+  Future<Map<String, dynamic>> createTeacher(Map<String, dynamic> data, {String? imagePath}) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/teachers');
+    var request = http.MultipartRequest('POST', uri);
+
+    data.forEach((key, value) {
+      if (value != null) {
+        if (value is List) {
+          request.fields[key] = jsonEncode(value);
+        } else {
+          request.fields[key] = value.toString();
+        }
+      }
+    });
+
+    if (imagePath != null && imagePath.isNotEmpty) {
+      request.files.add(await http.MultipartFile.fromPath('profile_img', imagePath));
+    }
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'Failed to create teacher');
+      }
+    } catch (e) {
+      throw Exception('Error creating teacher: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchTeachers() async {
+    final uri = Uri.parse('$_baseUrl/api/admin/teachers');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch teachers');
+    } catch (e) {
+      throw Exception('Error fetching teachers: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchTeacherById(String id) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/teachers/$id');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch teacher');
+    } catch (e) {
+      throw Exception('Error fetching teacher: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateTeacher(String id, Map<String, dynamic> data, {String? imagePath}) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/teachers/$id');
+    var request = http.MultipartRequest('PUT', uri);
+
+    data.forEach((key, value) {
+      if (value != null) {
+        if (value is List) {
+          request.fields[key] = jsonEncode(value);
+        } else {
+          request.fields[key] = value.toString();
+        }
+      }
+    });
+
+    if (imagePath != null && imagePath.isNotEmpty) {
+      request.files.add(await http.MultipartFile.fromPath('profile_img', imagePath));
+    }
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      final error = jsonDecode(response.body);
+      throw Exception(error['error'] ?? 'Failed to update teacher');
+    } catch (e) {
+      throw Exception('Error updating teacher: $e');
+    }
+  }
+
+  Future<void> deleteTeacher(String id) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/teachers/$id');
+    try {
+      final response = await http.delete(uri);
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'Failed to delete teacher');
+      }
+    } catch (e) {
+      throw Exception('Error deleting teacher: $e');
+    }
+  }
+
+  // ==============================
+  // PARENT FEE DASHBOARD (Module 3)
+  // ==============================
+
+  Future<Map<String, dynamic>> fetchChildFees(String studentId) async {
+    final uri = Uri.parse('$_baseUrl/parent/fees/$studentId');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch fee data');
+    } catch (e) {
+      throw Exception('Error fetching child fees: $e');
+    }
+  }
 }

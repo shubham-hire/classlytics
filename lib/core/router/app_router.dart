@@ -27,13 +27,20 @@ import '../../screens/digital_library_management_screen.dart';
 import '../../screens/timetable_management_screen.dart';
 import '../../screens/quiz_results_screen.dart';
 import '../../screens/parent_dashboard_screen.dart';
+import '../../screens/parent_fee_screen.dart';
 
 // Admin Imports
 import '../../screens/admin/user_management/admin_dashboard_screen.dart';
 import '../../screens/admin/user_management/user_list_screen.dart';
 import '../../screens/admin/user_management/user_form_screen.dart';
 import '../../screens/admin/user_management/bulk_upload_screen.dart';
-
+import '../../screens/admin/user_management/user_profile_screen.dart';
+import '../../screens/admin/fees/fee_structure_list_screen.dart';
+import '../../screens/admin/fees/fee_structure_form_screen.dart';
+import '../../screens/admin/fees/fee_assignment_screen.dart';
+import '../../screens/admin/fees/fee_reports_screen.dart';
+import '../../screens/admin/user_management/add_teacher_screen.dart';
+import '../../screens/admin/user_management/teacher_list_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -49,6 +56,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/parent-dashboard',
       builder: (context, state) => const ParentDashboard(),
+    ),
+    GoRoute(
+      path: '/parent/fees',
+      builder: (context, state) => const ParentFeeScreen(),
     ),
     GoRoute(
       path: '/attendance-management',
@@ -205,11 +216,53 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
     GoRoute(
+      path: '/admin/users/profile/:id',
+      builder: (context, state) => UserProfileScreen(
+        userId: state.pathParameters['id'] ?? '',
+      ),
+    ),
+    GoRoute(
       path: '/admin/users/bulk',
       builder: (context, state) => const BulkUploadScreen(),
     ),
+    GoRoute(
+      path: '/admin/teachers/add',
+      builder: (context, state) => const AddTeacherScreen(),
+    ),
+    GoRoute(
+      path: '/admin/teachers/edit/:id',
+      builder: (context, state) => AddTeacherScreen(
+        teacherId: state.pathParameters['id'],
+      ),
+    ),
+    GoRoute(
+      path: '/admin/teachers',
+      builder: (context, state) => const TeacherListScreen(),
+    ),
+
+    // ─── ADMIN FEE ROUTES ───
+    GoRoute(
+      path: '/admin/fees/structure',
+      builder: (context, state) => const FeeStructureListScreen(),
+    ),
+    GoRoute(
+      path: '/admin/fees/structure/new',
+      builder: (context, state) => const FeeStructureFormScreen(),
+    ),
+    GoRoute(
+      path: '/admin/fees/structure/edit/:id',
+      builder: (context, state) => FeeStructureFormScreen(
+        structureId: int.tryParse(state.pathParameters['id'] ?? ''),
+      ),
+    ),
+    GoRoute(
+      path: '/admin/fees/assignments',
+      builder: (context, state) => const FeeAssignmentScreen(),
+    ),
+    GoRoute(
+      path: '/admin/fees/reports',
+      builder: (context, state) => const FeeReportsScreen(),
+    ),
 
   ],
-
 );
-

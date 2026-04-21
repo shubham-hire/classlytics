@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import '../../../services/api_service.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -28,14 +29,26 @@ class _UserFormScreenState extends State<UserFormScreen> {
   final _addressController = TextEditingController();
   final _deptController = TextEditingController();
   String _selectedRole = 'Student';
-  String _selectedCountry = '';
-  String _selectedState = '';
-  String _selectedCity = '';
+  String _selectedCountry = 'India';
+  String? _selectedState;
+  String? _selectedStateCode;
+  String? _selectedCity;
+
+  // Student-specific Parent info
+  final _parentNameController = TextEditingController();
+  final _parentPhoneController = TextEditingController();
+  final _parentEmailController = TextEditingController();
+  final _parentRelationController = TextEditingController();
+  
+  List<dynamic> _states = [];
+  List<dynamic> _cities = [];
+  bool _isLoadingGeo = false;
+  String? _geoError;
 
   // Student-specific
   final _rollNoController = TextEditingController();
   final _dobController = TextEditingController();
-  String _selectedYear = '1st Year';
+  String _selectedYear = 'First Year';
   String? _selectedClassId;
 
   // Parent-specific
@@ -48,11 +61,18 @@ class _UserFormScreenState extends State<UserFormScreen> {
 
   final List<String> _roles = ['Student', 'Teacher', 'Parent', 'Admin'];
   final List<String> _years = [
-    '1st Year', '2nd Year', '3rd Year', '4th Year',
     'First Year', 'Second Year', 'Third Year', 'Fourth Year',
     '10th Grade', '11th Grade', '12th Grade'
   ];
   final List<String> _relations = ['Father', 'Mother', 'Guardian', 'Other'];
+  final List<String> _departments = [
+    'Computer Science',
+    'Information Technology',
+    'Mechanical Engineering',
+    'Electronics & TC',
+    'Civil Engineering',
+    'Applied Sciences'
+  ];
 
   @override
   void initState() {
@@ -69,6 +89,10 @@ class _UserFormScreenState extends State<UserFormScreen> {
     _deptController.dispose();
     _rollNoController.dispose();
     _dobController.dispose();
+    _parentNameController.dispose();
+    _parentPhoneController.dispose();
+    _parentEmailController.dispose();
+    _parentRelationController.dispose();
     super.dispose();
   }
 
@@ -80,6 +104,8 @@ class _UserFormScreenState extends State<UserFormScreen> {
       final results = await Future.wait([classesF, studentsF]);
       _classes = results[0] as List<dynamic>;
       _studentsList = results[1] as List<dynamic>;
+      
+      await _loadStates();
 
       // If edit mode, load user data
       if (widget.isEditMode) {
@@ -90,9 +116,22 @@ class _UserFormScreenState extends State<UserFormScreen> {
         _addressController.text = user['address'] ?? '';
         _deptController.text = user['dept'] ?? '';
         _selectedRole = user['role'] ?? 'Student';
-        _selectedCountry = user['country'] ?? '';
-        _selectedState = user['state'] ?? '';
-        _selectedCity = user['city'] ?? '';
+        _selectedCountry = user['country'] ?? 'India';
+        _selectedState = user['state'];
+        _selectedCity = user['city'];
+
+        if (_selectedState != null) {
+          // Find state code for cities loading
+          try {
+            final stateObj = _states.firstWhere((s) => s['name'] == _selectedState, orElse: () => null);
+            if (stateObj != null) {
+              _selectedStateCode = stateObj['isoCode'];
+              await _loadCities(_selectedStateCode!);
+              // Re-set city after loading list
+              _selectedCity = user['city'];
+            }
+          } catch (_) {}
+        }
 
         if (_selectedRole == 'Student') {
           _rollNoController.text = (user['roll_no'] ?? '').toString();
@@ -106,12 +145,20 @@ class _UserFormScreenState extends State<UserFormScreen> {
             }
             _selectedYear = yr;
           } else {
-            _selectedYear = '1st Year';
+            _selectedYear = 'First Year';
           }
           _selectedClassId = user['class_id'];
         } else if (_selectedRole == 'Parent') {
           _selectedRelation = user['relation'] ?? 'Guardian';
           _selectedChildId = user['child_id'];
+        }
+        
+        // Load parent info if it exists in user object
+        if (_selectedRole == 'Student') {
+          _parentNameController.text = user['parent_name'] ?? '';
+          _parentPhoneController.text = user['parent_phone'] ?? '';
+          _parentEmailController.text = user['parent_email'] ?? '';
+          _parentRelationController.text = user['parent_relation'] ?? '';
         }
       }
     } catch (e) {
@@ -138,8 +185,8 @@ class _UserFormScreenState extends State<UserFormScreen> {
       'address': _addressController.text.trim(),
       'dept': _deptController.text.trim(),
       'country': _selectedCountry,
-      'state': _selectedState,
-      'city': _selectedCity,
+      'state': _selectedState ?? '',
+      'city': _selectedCity ?? '',
     };
 
     // Student-specific
@@ -148,6 +195,12 @@ class _UserFormScreenState extends State<UserFormScreen> {
       data['dob'] = _dobController.text.trim();
       data['currentYear'] = _selectedYear;
       data['classId'] = _selectedClassId ?? '';
+      
+      // Detailed fields
+      data['parentName'] = _parentNameController.text.trim();
+      data['parentPhone'] = _parentPhoneController.text.trim();
+      data['parentEmail'] = _parentEmailController.text.trim();
+      data['parentRelation'] = _parentRelationController.text.trim();
     }
 
     // Parent-specific
@@ -185,6 +238,36 @@ class _UserFormScreenState extends State<UserFormScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadStates() async {
+    setState(() {
+      _isLoadingGeo = true;
+      _geoError = null;
+    });
+    try {
+      final states = await _api.fetchStates();
+      setState(() => _states = states);
+    } catch (e) {
+      setState(() => _geoError = 'Failed to load states: $e');
+    } finally {
+      setState(() => _isLoadingGeo = false);
+    }
+  }
+
+  Future<void> _loadCities(String stateCode) async {
+    setState(() {
+      _isLoadingGeo = true;
+      _cities = [];
+    });
+    try {
+      final cities = await _api.fetchCities(stateCode);
+      setState(() => _cities = cities);
+    } catch (e) {
+      debugPrint('City fetch error: $e');
+    } finally {
+      setState(() => _isLoadingGeo = false);
     }
   }
 
@@ -389,7 +472,61 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           enabled: !widget.isEditMode),
                       _textField(_phoneController, 'Phone Number', Icons.phone_rounded,
                           keyboardType: TextInputType.phone),
-                      _textField(_deptController, 'Department', Icons.business_rounded),
+                      DropdownButtonFormField<String>(
+                        value: _deptController.text.isEmpty ? null : _deptController.text,
+                        decoration: _inputDecoration('Department', Icons.business_rounded),
+                        items: _departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                        onChanged: (v) => setState(() => _deptController.text = v ?? ''),
+                        validator: (v) => (v == null || v.isEmpty) ? 'Department is required' : null,
+                      ),
+                    ]),
+
+                    const SizedBox(height: 20),
+                    _sectionTitle('Location Details'),
+                    const SizedBox(height: 12),
+                    _card([
+                      // Country
+                      DropdownButtonFormField<String>(
+                        value: _selectedCountry,
+                        decoration: _inputDecoration('Country', Icons.language_rounded),
+                        items: const [DropdownMenuItem(value: 'India', child: Text('India'))],
+                        onChanged: null, // Locked for now
+                      ),
+                      const SizedBox(height: 14),
+                      // State
+                      DropdownSearch<String>(
+                        items: (f, l) => _states.map((s) => s['name'].toString()).where((i) => i.toLowerCase().contains(f.toLowerCase())).toList(),
+                        decoratorProps: DropDownDecoratorProps(
+                          decoration: _inputDecoration('State', Icons.map_rounded).copyWith(
+                            suffixIcon: _isLoadingGeo && _states.isEmpty ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))) : null,
+                          ),
+                        ),
+                        popupProps: const PopupProps.menu(showSearchBox: true),
+                        onSelected: (val) {
+                          if (val == null) return;
+                          setState(() {
+                            _selectedState = val;
+                            _selectedStateCode = _states.firstWhere((s) => s['name'] == val)['isoCode'].toString();
+                          });
+                          _loadCities(_selectedStateCode!);
+                        },
+                        selectedItem: _selectedState,
+                      ),
+                      const SizedBox(height: 14),
+                      // City
+                      DropdownSearch<String>(
+                        items: (f, l) => _cities.map((c) => c['name'].toString()).where((i) => i.toLowerCase().contains(f.toLowerCase())).toList(),
+                        decoratorProps: DropDownDecoratorProps(
+                          decoration: _inputDecoration('City / Village', Icons.location_city_rounded).copyWith(
+                            suffixIcon: _isLoadingGeo && _cities.isEmpty && _selectedStateCode != null ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))) : null,
+                          ),
+                        ),
+                        popupProps: const PopupProps.menu(showSearchBox: true),
+                        onSelected: (val) => setState(() => _selectedCity = val),
+                        selectedItem: _selectedCity,
+                        enabled: _selectedStateCode != null,
+                      ),
+                      const SizedBox(height: 14),
                       _textField(_addressController, 'Address', Icons.location_on_rounded, maxLines: 2),
                     ]),
 
@@ -436,6 +573,22 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           ],
                           onChanged: (v) => setState(() => _selectedClassId = v),
                         ),
+                      ]),
+
+                      const SizedBox(height: 20),
+                      _sectionTitle('Parent / Guardian Details'),
+                      const SizedBox(height: 12),
+                      _card([
+                        _textField(_parentNameController, 'Parent Name', Icons.person_rounded),
+                        DropdownButtonFormField<String>(
+                          value: _parentRelationController.text.isEmpty ? null : _parentRelationController.text,
+                          decoration: _inputDecoration('Relation', Icons.family_restroom_rounded),
+                          items: _relations.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                          onChanged: (v) => setState(() => _parentRelationController.text = v ?? ''),
+                        ),
+                        const SizedBox(height: 14),
+                        _textField(_parentPhoneController, 'Parent Phone Number', Icons.phone_rounded, keyboardType: TextInputType.phone),
+                        _textField(_parentEmailController, 'Parent Email Address', Icons.email_rounded, keyboardType: TextInputType.emailAddress),
                       ]),
                     ],
 

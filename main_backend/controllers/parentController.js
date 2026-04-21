@@ -265,3 +265,43 @@ exports.getWeeklySummary = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// GET /parent/fees/:studentId — Get all fee assignments for parent's child
+exports.getChildFees = async (req, res) => {
+  const { studentId } = req.params;
+  try {
+    const [rows] = await db.execute(`
+      SELECT 
+        sfa.id, sfa.student_id, sfa.fee_structure_id,
+        sfa.total_amount, sfa.paid_amount, sfa.status, sfa.due_date, sfa.assigned_at,
+        (sfa.total_amount - sfa.paid_amount) AS pending_amount,
+        fs.title AS structure_title, fs.academic_year,
+        fs.tuition_fee, fs.exam_fee, fs.transport_fee,
+        fs.library_fee, fs.sports_fee, fs.miscellaneous_fee,
+        c.name AS class_name, c.section AS class_section
+      FROM student_fee_assignments sfa
+      INNER JOIN fee_structures fs ON sfa.fee_structure_id = fs.id
+      INNER JOIN classes c ON fs.class_id = c.id
+      WHERE sfa.student_id = ?
+      ORDER BY sfa.assigned_at DESC
+    `, [studentId]);
+
+    // Aggregate totals
+    const totalDue = rows.reduce((s, r) => s + parseFloat(r.total_amount), 0);
+    const totalPaid = rows.reduce((s, r) => s + parseFloat(r.paid_amount), 0);
+    const totalPending = totalDue - totalPaid;
+
+    res.status(200).json({
+      assignments: rows,
+      summary: {
+        totalDue: totalDue.toFixed(2),
+        totalPaid: totalPaid.toFixed(2),
+        totalPending: totalPending.toFixed(2),
+        count: rows.length,
+      }
+    });
+  } catch (err) {
+    console.error('[getChildFees] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -8,5 +8,6 @@ router.post('/leave-request/:requestId/status', parentController.updateLeaveRequ
 router.post('/study-plan', parentController.generateHomeStudyPlan);
 router.get('/child-info/:userId', parentController.getChildInfo);
 router.get('/weekly-summary/:studentId', parentController.getWeeklySummary);
+router.get('/fees/:studentId', parentController.getChildFees);
 
 module.exports = router;
