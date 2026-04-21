@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
 import '../../../../services/auth_store.dart';
 import '../../../../services/api_service.dart';
 import 'parent_tasks_screen.dart';
@@ -19,6 +19,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   Map<String, dynamic>? _attendanceData;
   Map<String, dynamic>? _marksData;
   List<dynamic>? _assignments;
+  Map<String, dynamic>? _childInfo;
   bool _isLoading = true;
 
   @override
@@ -28,8 +29,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   }
 
   Future<void> _loadChildData() async {
+    final parentId = AuthStore.instance.currentUser?['id'];
     final childId = AuthStore.instance.currentUser?['child_id'];
-    if (childId == null) {
+    if (childId == null || parentId == null) {
       setState(() => _isLoading = false);
       return;
     }
@@ -39,6 +41,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         _apiService.fetchAttendance(childId.toString()),
         _apiService.fetchMarks(childId.toString()),
         _apiService.fetchStudentAssignments(childId.toString()).catchError((_) => []),
+        _apiService.fetchChildInfo(parentId.toString()).catchError((_) => <String, dynamic>{}),
       ]);
       
       if (mounted) {
@@ -46,6 +49,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           _attendanceData = results[0] as Map<String, dynamic>?;
           _marksData = results[1] as Map<String, dynamic>?;
           _assignments = results[2] as List<dynamic>?;
+          _childInfo = results[3] as Map<String, dynamic>?;
           _isLoading = false;
         });
       }
@@ -63,8 +67,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 
     final user = AuthStore.instance.currentUser;
     final parentName = user?['name'] ?? 'Parent';
-    final childName = user?['child_name'] ?? 'Student';
-
+    final childName = _childInfo?['childName'] ?? user?['child_name'] ?? 'Child';
+    final childClass = _childInfo?['className'] ?? 'Unassigned Class'; 
     final attendancePct = _attendanceData?['percentage']?.toString() ?? '85';
     final marks = (_marksData?['marks'] as List?) ?? [];
     int pendingTasks = 0;
@@ -163,7 +167,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildModuleButton('Academic Progress', Icons.trending_up_rounded, const ParentAnalyticsScreen())),
+                    Expanded(child: _buildModuleButton('Academic Progress', Icons.trending_up_rounded, ParentAnalyticsScreen(teacherId: _childInfo?['teacherId']?.toString() ?? 'fallback_teacher', teacherName: _childInfo?['teacherName'] ?? 'Class Teacher'))),
                     const SizedBox(width: 12),
                     Expanded(child: _buildModuleButton('Assignments', Icons.book_rounded, const ParentTasksScreen())),
                   ],
@@ -173,7 +177,17 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                   children: [
                     Expanded(child: _buildModuleButton('Fee Status', Icons.receipt_long_rounded, const ParentFeeScreen())),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildModuleButton('Teacher Chat', Icons.chat_rounded, const ParentTeacherChatScreen())),
+                    Expanded(child: _buildModuleButton('Teacher Chat', Icons.chat_rounded, ParentTeacherChatScreen(teacherId: _childInfo?['teacherId']?.toString() ?? 'fallback_teacher', teacherName: _childInfo?['teacherName'] ?? 'Class Teacher'))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionModuleButton('Request Leave', Icons.event_busy_rounded, _showLeaveRequestDialog),
+                    ),
+                    const SizedBox(width: 12),
+                    const Spacer(),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -215,7 +229,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             Expanded(
               child: FloatingActionButton.extended(
                 heroTag: 'contact_btn',
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParentTeacherChatScreen())),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ParentTeacherChatScreen(teacherId: _childInfo?['teacherId']?.toString() ?? 'fallback_teacher', teacherName: _childInfo?['teacherName'] ?? 'Class Teacher'))),
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.5))),
                 icon: const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.primaryColor),
@@ -226,11 +240,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             Expanded(
               child: FloatingActionButton.extended(
                 heroTag: 'plan_btn',
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ParentAnalyticsScreen())),
+                onPressed: _generateAIStudyPlan,
                 backgroundColor: AppTheme.primaryColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 icon: const Icon(Icons.psychology_rounded, color: Colors.white),
-                label: const Text('Action Plan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                label: const Text('AI Study Plan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -321,9 +335,18 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text('• Attendance: 85% (Stable)', style: TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
-          const Text('• Performance: Slight decline in Science modules', style: TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
-          const Text('• Focus Area: Completing late assignments', style: TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
+          FutureBuilder<String>(
+            future: _apiService.fetchWeeklySummary(AuthStore.instance.currentUser?['child_id']?.toString() ?? ''),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: Colors.white));
+              }
+              if (snapshot.hasError) {
+                return const Text('Summary not available.', style: TextStyle(color: Colors.white, fontSize: 14));
+              }
+              return Text(snapshot.data ?? 'No summary.', style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5));
+            }
+          ),
         ],
       ),
     );
@@ -350,6 +373,165 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             ),
             const SizedBox(height: 12),
             Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionModuleButton(String title, IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 5)],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppTheme.accentColor.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: AppTheme.primaryColor, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLeaveRequestDialog() {
+    final reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Request Leave'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Apply for leave for your child. It will be sent to the teacher for approval.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Reason for leave',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            )
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (reasonController.text.trim().isEmpty) return;
+              final childId = AuthStore.instance.currentUser?['child_id'];
+              final userId = AuthStore.instance.currentUser?['id'];
+              if (childId == null || userId == null) return;
+              
+              Navigator.pop(context);
+              try {
+                // Sending tomorrow and day after as mock dates for now.
+                final now = DateTime.now();
+                final start = now.add(const Duration(days: 1)).toIso8601String().split('T')[0];
+                final end = now.add(const Duration(days: 2)).toIso8601String().split('T')[0];
+                
+                await _apiService.submitLeaveRequest(
+                  userId: userId.toString(), 
+                  studentId: childId.toString(), 
+                  startDate: start, 
+                  endDate: end, 
+                  reason: reasonController.text.trim()
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Leave request submitted successfully.')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                }
+              }
+            },
+            child: const Text('Submit'),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _generateAIStudyPlan() {
+    final childId = AuthStore.instance.currentUser?['child_id'];
+    if (childId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.psychology_rounded, color: Colors.white, size: 32),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('AI Home Study Plan', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  )
+                ],
+              ),
+            ),
+            Expanded(
+              child: FutureBuilder<String>(
+                future: _apiService.generateHomeStudyPlan(childId.toString()),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('ClassAI is analyzing performance...', style: TextStyle(color: AppTheme.textSecondary))
+                        ],
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+                  }
+                  
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      snapshot.data ?? 'No plan available.',
+                      style: const TextStyle(fontSize: 15, height: 1.5, color: AppTheme.textPrimary),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
 import 'ai_assistant_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {

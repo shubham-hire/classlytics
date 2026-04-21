@@ -6,7 +6,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
-        android:label="main_app"
+        android:label="Classlytics"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

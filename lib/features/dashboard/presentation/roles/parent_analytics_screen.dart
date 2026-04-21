@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
-import 'package:main_app/services/api_service.dart';
-import 'package:main_app/services/auth_store.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
+import 'package:classlytics/services/api_service.dart';
+import 'package:classlytics/services/auth_store.dart';
 import 'parent_teacher_chat_screen.dart';
 
 class ParentAnalyticsScreen extends StatefulWidget {
-  const ParentAnalyticsScreen({super.key});
+  final String teacherId;
+  final String teacherName;
+
+  const ParentAnalyticsScreen({
+    super.key,
+    required this.teacherId,
+    required this.teacherName,
+  });
 
   @override
   State<ParentAnalyticsScreen> createState() => _ParentAnalyticsScreenState();
@@ -155,7 +162,7 @@ class _ParentAnalyticsScreenState extends State<ParentAnalyticsScreen> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ParentTeacherChatScreen()));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => ParentTeacherChatScreen(teacherId: widget.teacherId, teacherName: widget.teacherName)));
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primaryColor,
@@ -297,7 +304,7 @@ class _ParentAnalyticsScreenState extends State<ParentAnalyticsScreen> {
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ParentTeacherChatScreen()));
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => ParentTeacherChatScreen(teacherId: widget.teacherId, teacherName: widget.teacherName)));
                 },
                 icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
                 label: const Text('Execute Step 3 (Message Teacher)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),

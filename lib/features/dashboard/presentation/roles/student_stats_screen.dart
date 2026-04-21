@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_store.dart';
 import 'detailed_analytics_screen.dart';

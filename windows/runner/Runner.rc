@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.edulife.classlytics" "\0"
-            VALUE "FileDescription", "main_app" "\0"
+            VALUE "FileDescription", "Classlytics" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "main_app" "\0"
+            VALUE "InternalName", "Classlytics" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.edulife.classlytics. All rights reserved." "\0"
-            VALUE "OriginalFilename", "main_app.exe" "\0"
-            VALUE "ProductName", "main_app" "\0"
+            VALUE "OriginalFilename", "classlytics.exe" "\0"
+            VALUE "ProductName", "Classlytics" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

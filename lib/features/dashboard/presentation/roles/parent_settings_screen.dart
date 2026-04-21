@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:main_app/core/theme/app_theme.dart';
-import 'package:main_app/services/auth_store.dart';
+import 'package:classlytics/core/theme/app_theme.dart';
+import 'package:classlytics/services/auth_store.dart';
 import 'package:go_router/go_router.dart';
 
 class ParentSettingsScreen extends StatelessWidget {

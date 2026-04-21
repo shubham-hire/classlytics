@@ -1,6 +1,6 @@
 {
-    "name": "main_app",
-    "short_name": "main_app",
+    "name": "Classlytics",
+    "short_name": "Classlytics",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
