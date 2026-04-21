@@ -12,6 +12,12 @@ router.get('/:classId', assignmentController.getAssignments);
 // POST /assignments — Create a new assignment (with optional media upload)
 router.post('/', upload.single('media'), assignmentController.createAssignment);
 
+// PUT /assignments/:id — Edit an assignment
+router.put('/:id', upload.single('media'), assignmentController.editAssignment);
+
+// DELETE /assignments/:id — Delete an assignment
+router.delete('/:id', assignmentController.deleteAssignment);
+
 // POST /assignments/:assignmentId/submit — Submit an assignment
 router.post('/:assignmentId/submit', assignmentController.submitAssignment);
 

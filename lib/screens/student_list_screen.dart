@@ -71,16 +71,6 @@ class _StudentListScreenState extends State<StudentListScreen> {
             onPressed: () => context.push('/assignments/${widget.classId}'),
             tooltip: 'Assignments',
           ),
-          IconButton(
-            icon: const Icon(Icons.person_search_rounded),
-            onPressed: () => _showGlobalSelection(),
-            tooltip: 'Add from Registered Students',
-          ),
-          IconButton(
-            icon: const Icon(Icons.group_add_rounded),
-            onPressed: () => _showBulkAddDialog(),
-            tooltip: 'Bulk Add Students',
-          ),
         ],
       ),
       body: FutureBuilder<List<dynamic>>(
@@ -266,79 +256,5 @@ class _StudentListScreenState extends State<StudentListScreen> {
     );
   }
 
-  void _showBulkAddDialog() {
-    final bulkController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Bulk Add Students'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Enter list in format:\nName, Email, RollNo (one per line)', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: bulkController,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: 'Rahul, rahul@email.com, 01\nSneha, sneha@email.com, 02',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final nav = Navigator.of(context);
-              final messenger = ScaffoldMessenger.of(context);
-              try {
-                List<String> lines = bulkController.text.split('\n');
-                List<Map<String, String>> studentList = [];
-                for (var line in lines) {
-                  var parts = line.split(',');
-                  if (parts.length >= 2) {
-                    studentList.add({
-                      'name': parts[0].trim(),
-                      'email': parts[1].trim(),
-                      'rollNo': parts.length > 2 ? parts[2].trim() : '',
-                    });
-                  }
-                }
-                if (studentList.isNotEmpty) {
-                  await _apiService.bulkAddStudents(widget.classId, studentList);
-                  nav.pop();
-                  setState(() { _studentsFuture = _apiService.fetchStudents(widget.classId); _allStudents = null; });
-                }
-              } catch (e) {
-                messenger.showSnackBar(SnackBar(content: Text(e.toString())));
-              }
-            },
-            child: const Text('Add All'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showGlobalSelection() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => GlobalStudentSelectionScreen(
-          classId: widget.classId,
-        ),
-      ),
-    ).then((value) {
-      if (value == true) {
-        setState(() {
-          _studentsFuture = _apiService.fetchStudents(widget.classId);
-          _allStudents = null;
-        });
-      }
-    });
-  }
 }

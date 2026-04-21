@@ -36,8 +36,55 @@ exports.createAssignment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// PUT /assignments/:id — Edit an assignment
+exports.editAssignment = async (req, res) => {
+  const { id } = req.params;
+  const { title, description, deadline } = req.body;
+
+  let mediaUrl = undefined;
+  let mediaType = undefined;
+  if (req.file) {
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    mediaUrl = `/uploads/${req.file.filename}`;
+    mediaType = ext === '.pdf' ? 'pdf' : 'image';
+  }
+
+  try {
+    const updates = [];
+    const params = [];
+
+    if (title) { updates.push('title = ?'); params.push(title); }
+    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+    if (deadline) { updates.push('deadline = ?'); params.push(deadline); }
+    if (mediaUrl !== undefined) { 
+      updates.push('media_url = ?'); params.push(mediaUrl); 
+      updates.push('media_type = ?'); params.push(mediaType); 
+    }
+
+    if (updates.length > 0) {
+      params.push(id);
+      await db.execute(`UPDATE assignments SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+    
+    res.status(200).json({ message: 'Assignment updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// DELETE /assignments/:id — Delete an assignment
+exports.deleteAssignment = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.execute('DELETE FROM assignments WHERE id = ?', [id]);
+    res.status(200).json({ message: 'Assignment deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 // GET /assignments/:classId — Get all assignments for a class
+
 exports.getAssignments = async (req, res) => {
   const { classId } = req.params;
   try {

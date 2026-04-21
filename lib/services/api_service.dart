@@ -98,19 +98,7 @@ class ApiService {
     }
   }
 
-  Future<void> addClass(String id, String name, String section) async {
-    final url = Uri.parse('$_baseUrl/teacher/classes');
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id': id, 'name': name, 'section': section}),
-      );
-      if (response.statusCode != 201) throw Exception('Failed to add class');
-    } catch (e) {
-      throw Exception('Error adding class: $e');
-    }
-  }
+
 
   Future<void> enrollStudents(String classId, List<String> studentIds) async {
     final url = Uri.parse('$_baseUrl/teacher/enroll');
@@ -240,19 +228,7 @@ class ApiService {
     }
   }
 
-  Future<void> bulkAddStudents(String classId, List<Map<String, String>> studentList) async {
-    final url = Uri.parse('$_baseUrl/class/bulk-add');
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'classId': classId, 'studentList': studentList}),
-      );
-      if (response.statusCode != 201) throw Exception('Failed to bulk add students');
-    } catch (e) {
-      throw Exception('Error bulk adding: $e');
-    }
-  }
+
 
   Future<void> updateStudent(String id, String name, String rollNo, String classId) async {
     final url = Uri.parse('$_baseUrl/class/$id');
@@ -418,9 +394,42 @@ class ApiService {
     }
   }
 
-  // ==============================
+// ==============================
   // ASSIGNMENTS
   // ==============================
+
+  Future<void> deleteAssignment(String id) async {
+    final url = Uri.parse('$_baseUrl/assignments/$id');
+    try {
+      final response = await http.delete(url);
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete assignment');
+      }
+    } catch (e) {
+      throw Exception('Error deleting assignment: $e');
+    }
+  }
+
+  Future<void> editAssignment(String id, String title, String description, String deadline) async {
+    final url = Uri.parse('$_baseUrl/assignments/$id');
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title': title,
+          'description': description,
+          'deadline': deadline,
+        }),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to edit assignment');
+      }
+    } catch (e) {
+      throw Exception('Error editing assignment: $e');
+    }
+  }
+
 
   Future<void> createAssignment(String classId, String title, String description, String deadline, {String? teacherId}) async {
     final url = Uri.parse('$_baseUrl/assignments');

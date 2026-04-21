@@ -9,22 +9,6 @@ exports.getClasses = async (req, res) => {
   }
 };
 
-exports.addClass = async (req, res) => {
-  const { id, name, section, teacherId } = req.body;
-  if (!id || !name || !section) {
-    return res.status(400).json({ error: 'id, name, and section are required' });
-  }
-
-  try {
-    await db.execute(
-      'INSERT INTO classes (id, name, section, teacher_id) VALUES (?, ?, ?, ?)',
-      [id, name, section, teacherId || null]
-    );
-    res.status(201).json({ message: 'Class created successfully', class: { id, name, section, teacherId } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
 
 exports.enrollStudents = async (req, res) => {
   const { classId, studentIds } = req.body; // studentIds: ['STU001', 'STU002']

@@ -321,14 +321,42 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text('Failed to load assignments', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text('Please try again later.', style: const TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () => setState(() => _fetchAssignments()),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 final assignments = snapshot.data ?? [];
 
                 if (assignments.isEmpty) {
-                  return const Center(child: Text('No assignments yet.', style: TextStyle(color: Colors.grey, fontSize: 16)));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.assignment_outlined, size: 64, color: Colors.grey.shade400),
+                        const SizedBox(height: 16),
+                        Text('No assignments yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                        const SizedBox(height: 8),
+                        Text('Click "New Assignment" to get started.', style: TextStyle(color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  );
                 }
+
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -357,7 +385,24 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
                                   child: Text('Due: ${assignment['deadline']}', style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
-                                )
+                                ),
+                                PopupMenuButton<String>(
+                                  onSelected: (value) async {
+                                    if (value == 'delete') {
+                                      await _apiService.deleteAssignment(assignment['id']);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment deleted')));
+                                        setState(() => _fetchAssignments());
+                                      }
+                                    } else if (value == 'edit') {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Edit coming soon')));
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                                    const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
+                                  ],
+                                ),
                               ],
                             ),
                             const SizedBox(height: 8),
