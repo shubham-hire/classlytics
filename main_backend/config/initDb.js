@@ -87,6 +87,12 @@ const initDb = async () => {
             }
         }
 
+        // Ensure users.is_active column exists for Admin activate/deactivate
+        try {
+            await db.execute('ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE');
+            console.log('📡 [DB MIGRATION] Added column is_active to users');
+        } catch (e) { /* already exists */ }
+
         // Ensure parent email is unique if present
         try {
             await db.execute('ALTER TABLE parents ADD UNIQUE KEY unique_parent_email (email)');

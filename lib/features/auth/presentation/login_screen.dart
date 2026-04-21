@@ -72,12 +72,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       AuthStore.instance.setUser(user);
 
       if (mounted) {
-        if (role == 'teacher' || role == 'admin') {
+        if (role == 'teacher') {
           context.go('/teacher-dashboard');
         } else if (role == 'student') {
           context.go('/dashboard', extra: UserRole.student);
         } else if (role == 'parent') {
           context.go('/dashboard', extra: UserRole.parent);
+        } else if (role == 'admin') {
+          context.go('/admin');
         } else {
           context.go('/teacher-dashboard');
         }
@@ -180,17 +182,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           : const Text('Sign In'),
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 24),
 
-                   
-                    ElevatedButton(
-                      onPressed: () {
-                        context.go('/admin');
-                      },
-                      child: const Text("Go Admin"),
+                    // Admin Dashboard Demo
+                    OutlinedButton.icon(
+                      onPressed: () => context.go('/admin'),
+                      icon: const Icon(Icons.admin_panel_settings_rounded, size: 18),
+                      label: const Text('Admin Dashboard'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF8B5CF6),
+                        side: const BorderSide(color: Color(0xFF8B5CF6)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
 
                     // Teacher Demo
                     OutlinedButton(

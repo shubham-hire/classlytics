@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 import '../services/auth_store.dart';
+import '../core/widgets/shared_ui_components.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -66,29 +67,31 @@ class _StudentDashboardState extends State<StudentDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Student Identity Card
-              _buildProfileCard(),
+              SharedUIComponents.buildChildIdentityCard(
+                name: _user['name'] ?? 'Student',
+                id: 'ID: ${_user['id'] ?? ''}',
+                info: '${_user['dept'] ?? 'N/A'} • ${_user['current_year'] ?? 'N/A'}',
+                gradientColors: [const Color(0xFF1E3A8A), const Color(0xFF3B82F6)],
+              ),
               const SizedBox(height: 24),
 
-              const Text(
-                'Performance Overview',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-              ),
+              SharedUIComponents.buildSectionTitle('Performance Overview'),
               const SizedBox(height: 16),
 
               // Attendance & Marks Quick Stats
-              Row(
-                children: [
-                  Expanded(child: _buildAttendanceCard()),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildMarksCard()),
-                ],
+              SizedBox(
+                height: 140,
+                child: Row(
+                  children: [
+                    Expanded(child: _buildAttendanceCard()),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildMarksCard()),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 32),
-              const Text(
-                'AI Academic Insights',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-              ),
+              SharedUIComponents.buildSectionTitle('AI Academic Insights'),
               const SizedBox(height: 16),
               _buildInsightsList(),
               const SizedBox(height: 32),
@@ -99,83 +102,21 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
-  Widget _buildProfileCard() {
-    final name = (_user['name'] as String? ?? 'Student');
-    final id = (_user['id'] ?? '').toString();
-    final dept = (_user['dept'] as String? ?? 'N/A');
-    final year = (_user['current_year'] as String? ?? 'N/A');
-    
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E3A8A).withValues(alpha: 0.35),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 35,
-            backgroundColor: Colors.white24,
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : 'S',
-              style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text('ID: $id', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                if (dept != 'N/A' || year != 'N/A')
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$dept • $year',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAttendanceCard() {
     return FutureBuilder<Map<String, dynamic>>(
       future: _attendanceFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildStatCard('Attendance', '--', Icons.calendar_today, Colors.orange, loading: true);
+        String val = '--';
+        if (snapshot.hasData) {
+          val = '${snapshot.data?['percentage'] ?? 0}%';
         }
-        if (snapshot.hasError) {
-          return _buildStatCard('Attendance', 'Err', Icons.calendar_today, Colors.orange);
-        }
-        final percentage = snapshot.data?['percentage'] ?? '--';
-        return _buildStatCard('Attendance', '$percentage%', Icons.calendar_today, Colors.orange);
+        return SharedUIComponents.buildStatCard(
+          'Attendance',
+          val,
+          Icons.calendar_today,
+          Colors.orange,
+          isLoading: snapshot.connectionState == ConnectionState.waiting,
+        );
       },
     );
   }
@@ -184,51 +125,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
     return FutureBuilder<Map<String, dynamic>>(
       future: _marksFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildStatCard('Avg Score', '--', Icons.auto_awesome, Colors.purple, loading: true);
+        String val = '--';
+        if (snapshot.hasData) {
+          val = '${snapshot.data?['average'] ?? 0}';
         }
-        if (snapshot.hasError) {
-          return _buildStatCard('Avg Score', 'Err', Icons.auto_awesome, Colors.purple);
-        }
-        final avg = snapshot.data?['average'] ?? '--';
-        return _buildStatCard('Avg Score', '$avg', Icons.auto_awesome, Colors.purple);
+        return SharedUIComponents.buildStatCard(
+          'Avg Score',
+          val,
+          Icons.auto_awesome,
+          Colors.purple,
+          isLoading: snapshot.connectionState == ConnectionState.waiting,
+        );
       },
-    );
-  }
-
-  Widget _buildStatCard(String title, String val, IconData icon, Color color, {bool loading = false}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 10),
-          loading
-              ? SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: color),
-                )
-              : Text(
-                  val,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
-                ),
-          const SizedBox(height: 4),
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        ],
-      ),
     );
   }
 
@@ -255,7 +163,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
           );
         }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        final list = snapshot.data ?? [];
+        if (list.isEmpty) {
           return Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -273,7 +182,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         }
 
         return Column(
-          children: snapshot.data!.map((insight) => Container(
+          children: list.map((insight) => Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -298,3 +207,4 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 }
+

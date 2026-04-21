@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:classlytics/core/theme/app_theme.dart';
-import 'roles/admin_dashboard_screen.dart';
+// Removed Admin Dashboard Import
 import 'roles/parent_dashboard_screen.dart';
 import 'roles/teacher_dashboard_screen.dart';
 import 'roles/student_dashboard_screen.dart';
@@ -12,7 +12,7 @@ import 'roles/parent_tasks_screen.dart';
 import 'roles/parent_analytics_screen.dart';
 import 'roles/parent_settings_screen.dart';
 
-enum UserRole { student, teacher, parent, admin }
+enum UserRole { student, teacher, parent }
 
 class DashboardScreen extends StatefulWidget {
   final UserRole userRole;
@@ -34,8 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return _currentIndex == 0 ? const TeacherDashboardScreen() : _buildPlaceholder();
       case UserRole.parent:
         return _buildParentTabs();
-      case UserRole.admin:
-        return _currentIndex == 0 ? const AdminDashboardScreen() : _buildPlaceholder();
+      // Removed Admin Case
     }
   }
 

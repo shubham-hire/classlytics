@@ -1,0 +1,624 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../services/api_service.dart';
+import '../../../core/theme/app_theme.dart';
+
+class UserFormScreen extends StatefulWidget {
+  final String? userId; // null = create mode, non-null = edit mode
+
+  const UserFormScreen({super.key, this.userId});
+
+  bool get isEditMode => userId != null;
+
+  @override
+  State<UserFormScreen> createState() => _UserFormScreenState();
+}
+
+class _UserFormScreenState extends State<UserFormScreen> {
+  final ApiService _api = ApiService();
+  final _formKey = GlobalKey<FormState>();
+  bool _loading = false;
+  bool _initialLoading = true;
+  String? _createdTempPassword;
+
+  // Common fields
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _deptController = TextEditingController();
+  String _selectedRole = 'Student';
+  String _selectedCountry = '';
+  String _selectedState = '';
+  String _selectedCity = '';
+
+  // Student-specific
+  final _rollNoController = TextEditingController();
+  final _dobController = TextEditingController();
+  String _selectedYear = '1st Year';
+  String? _selectedClassId;
+
+  // Parent-specific
+  String _selectedRelation = 'Guardian';
+  String? _selectedChildId;
+
+  // Dropdown data
+  List<dynamic> _classes = [];
+  List<dynamic> _studentsList = [];
+
+  final List<String> _roles = ['Student', 'Teacher', 'Parent', 'Admin'];
+  final List<String> _years = [
+    '1st Year', '2nd Year', '3rd Year', '4th Year',
+    'First Year', 'Second Year', 'Third Year', 'Fourth Year',
+    '10th Grade', '11th Grade', '12th Grade'
+  ];
+  final List<String> _relations = ['Father', 'Mother', 'Guardian', 'Other'];
+
+  @override
+  void initState() {
+    super.initState();
+    _initData();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _deptController.dispose();
+    _rollNoController.dispose();
+    _dobController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initData() async {
+    try {
+      // Load dropdown data
+      final classesF = _api.fetchAdminClasses();
+      final studentsF = _api.fetchAdminStudentsList();
+      final results = await Future.wait([classesF, studentsF]);
+      _classes = results[0] as List<dynamic>;
+      _studentsList = results[1] as List<dynamic>;
+
+      // If edit mode, load user data
+      if (widget.isEditMode) {
+        final user = await _api.fetchAdminUserById(widget.userId!);
+        _nameController.text = user['name'] ?? '';
+        _emailController.text = user['email'] ?? '';
+        _phoneController.text = user['phone'] ?? '';
+        _addressController.text = user['address'] ?? '';
+        _deptController.text = user['dept'] ?? '';
+        _selectedRole = user['role'] ?? 'Student';
+        _selectedCountry = user['country'] ?? '';
+        _selectedState = user['state'] ?? '';
+        _selectedCity = user['city'] ?? '';
+
+        if (_selectedRole == 'Student') {
+          _rollNoController.text = (user['roll_no'] ?? '').toString();
+          _dobController.text = user['dob'] != null ? user['dob'].toString().split('T')[0] : '';
+          
+          final yr = user['current_year'];
+          if (yr != null && yr.toString().isNotEmpty) {
+            // Safety: If value not in list, add it to prevent crash
+            if (!_years.contains(yr)) {
+              _years.add(yr);
+            }
+            _selectedYear = yr;
+          } else {
+            _selectedYear = '1st Year';
+          }
+          _selectedClassId = user['class_id'];
+        } else if (_selectedRole == 'Parent') {
+          _selectedRelation = user['relation'] ?? 'Guardian';
+          _selectedChildId = user['child_id'];
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading data: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+
+    if (mounted) setState(() => _initialLoading = false);
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    final data = <String, dynamic>{
+      'name': _nameController.text.trim(),
+      'email': _emailController.text.trim(),
+      'role': _selectedRole,
+      'phone': _phoneController.text.trim(),
+      'address': _addressController.text.trim(),
+      'dept': _deptController.text.trim(),
+      'country': _selectedCountry,
+      'state': _selectedState,
+      'city': _selectedCity,
+    };
+
+    // Student-specific
+    if (_selectedRole == 'Student') {
+      data['rollNo'] = _rollNoController.text.trim();
+      data['dob'] = _dobController.text.trim();
+      data['currentYear'] = _selectedYear;
+      data['classId'] = _selectedClassId ?? '';
+    }
+
+    // Parent-specific
+    if (_selectedRole == 'Parent') {
+      data['relation'] = _selectedRelation;
+      data['childId'] = _selectedChildId ?? '';
+    }
+
+    try {
+      if (widget.isEditMode) {
+        await _api.updateAdminUser(widget.userId!, data);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('User updated successfully'), backgroundColor: Colors.green),
+          );
+          context.pop(true);
+        }
+      } else {
+        final result = await _api.createAdminUser(data);
+        if (mounted) {
+          setState(() {
+            _createdTempPassword = result['tempPassword'];
+          });
+          _showSuccessDialog(result);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: Error creating user: Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showSuccessDialog(Map<String, dynamic> result) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Text('User Created!'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (result['studentId'] != null) ...[
+              _infoRow('Student ID', result['studentId']),
+              const SizedBox(height: 8),
+            ],
+            _infoRow('User ID', result['userId'] ?? ''),
+            const SizedBox(height: 8),
+            _infoRow('Temp Password', result['tempPassword'] ?? ''),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: Colors.amber.shade700, size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Save these credentials! The password is shown only once.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Reset form for another entry
+              _formKey.currentState?.reset();
+              _nameController.clear();
+              _emailController.clear();
+              _phoneController.clear();
+              _addressController.clear();
+              _rollNoController.clear();
+              _dobController.clear();
+              setState(() => _createdTempPassword = null);
+            },
+            child: const Text('Add Another'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.go('/admin/users');
+            },
+            child: const Text('Go to User List'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600, fontSize: 13)),
+        ),
+        Expanded(
+          child: SelectableText(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2005),
+      firstDate: DateTime(1950),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      _dobController.text = picked.toIso8601String().split('T')[0];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E293B),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          widget.isEditMode ? 'Edit User' : 'Add New User',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (widget.isEditMode) {
+              context.pop();
+            } else {
+              context.go('/admin/users');
+            }
+          },
+        ),
+      ),
+      body: _initialLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ─── ROLE SELECTOR ───
+                    if (!widget.isEditMode) ...[
+                      _sectionTitle('Role'),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _roles.map((role) {
+                          final isSelected = _selectedRole == role;
+                          final color = _roleColor(role);
+                          return ChoiceChip(
+                            label: Text(role, style: TextStyle(
+                              color: isSelected ? Colors.white : color,
+                              fontWeight: FontWeight.w700,
+                            )),
+                            selected: isSelected,
+                            onSelected: (_) => setState(() => _selectedRole = role),
+                            selectedColor: color,
+                            backgroundColor: color.withOpacity(0.08),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _roleColor(_selectedRole).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_roleIcon(_selectedRole), color: _roleColor(_selectedRole)),
+                            const SizedBox(width: 10),
+                            Text('Editing $_selectedRole', style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: _roleColor(_selectedRole),
+                              fontSize: 15,
+                            )),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // ─── BASIC INFO ───
+                    _sectionTitle('Basic Information'),
+                    const SizedBox(height: 12),
+                    _card([
+                      _textField(_nameController, 'Full Name', Icons.person_rounded, required: true),
+                      _textField(_emailController, 'Email Address', Icons.email_rounded,
+                          required: true, keyboardType: TextInputType.emailAddress,
+                          enabled: !widget.isEditMode),
+                      _textField(_phoneController, 'Phone Number', Icons.phone_rounded,
+                          keyboardType: TextInputType.phone),
+                      _textField(_deptController, 'Department', Icons.business_rounded),
+                      _textField(_addressController, 'Address', Icons.location_on_rounded, maxLines: 2),
+                    ]),
+
+                    // ─── STUDENT-SPECIFIC ───
+                    if (_selectedRole == 'Student') ...[
+                      const SizedBox(height: 20),
+                      _sectionTitle('Student Details'),
+                      const SizedBox(height: 12),
+                      _card([
+                        // Year dropdown
+                        DropdownButtonFormField<String>(
+                          value: _selectedYear,
+                          decoration: _inputDecoration('Current Year', Icons.calendar_today_rounded),
+                          items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                          onChanged: (v) => setState(() => _selectedYear = v!),
+                        ),
+                        const SizedBox(height: 14),
+                        _textField(_rollNoController, 'Roll Number', Icons.tag_rounded,
+                            keyboardType: TextInputType.number),
+                        // DOB picker
+                        TextFormField(
+                          controller: _dobController,
+                          readOnly: true,
+                          decoration: _inputDecoration('Date of Birth', Icons.cake_rounded).copyWith(
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.calendar_month_rounded),
+                              onPressed: _pickDate,
+                            ),
+                          ),
+                          onTap: _pickDate,
+                        ),
+                        const SizedBox(height: 14),
+                        // Class dropdown
+                        DropdownButtonFormField<String>(
+                          value: _selectedClassId,
+                          decoration: _inputDecoration('Assign to Class', Icons.class_rounded),
+                          isExpanded: true,
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('No class', style: TextStyle(color: Colors.grey))),
+                            ..._classes.map((c) => DropdownMenuItem(
+                              value: c['id'] as String,
+                              child: Text('${c['name']} - ${c['section']}${c['teacher_name'] != null ? ' (${c['teacher_name']})' : ''}'),
+                            )),
+                          ],
+                          onChanged: (v) => setState(() => _selectedClassId = v),
+                        ),
+                      ]),
+                    ],
+
+                    // ─── PARENT-SPECIFIC ───
+                    if (_selectedRole == 'Parent') ...[
+                      const SizedBox(height: 20),
+                      _sectionTitle('Parent Details'),
+                      const SizedBox(height: 12),
+                      _card([
+                        // Relation
+                        DropdownButtonFormField<String>(
+                          value: _selectedRelation,
+                          decoration: _inputDecoration('Relation', Icons.family_restroom_rounded),
+                          items: _relations.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                          onChanged: (v) => setState(() => _selectedRelation = v!),
+                        ),
+                        const SizedBox(height: 14),
+                        // Link to student
+                        DropdownButtonFormField<String>(
+                          value: _selectedChildId,
+                          decoration: _inputDecoration('Link to Student', Icons.link_rounded),
+                          isExpanded: true,
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('No student linked', style: TextStyle(color: Colors.grey))),
+                            ..._studentsList.map((s) => DropdownMenuItem(
+                              value: s['id'] as String,
+                              child: Text('${s['name']} (${s['id']})'),
+                            )),
+                          ],
+                          onChanged: (v) => setState(() => _selectedChildId = v),
+                        ),
+                      ]),
+                    ],
+
+                    // ─── TEACHER NOTE ───
+                    if (_selectedRole == 'Teacher') ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline_rounded, color: Colors.green.shade700),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'Teachers can be assigned to classes after creation via Academic Structure Management.',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 28),
+
+                    // ─── SUBMIT BUTTON ───
+                    SizedBox(
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E293B),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: _loading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              )
+                            : Text(
+                                widget.isEditMode ? 'Save Changes' : 'Create User',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Color _roleColor(String role) {
+    switch (role) {
+      case 'Student': return const Color(0xFF3B82F6);
+      case 'Teacher': return const Color(0xFF10B981);
+      case 'Parent':  return const Color(0xFFF59E0B);
+      case 'Admin':   return const Color(0xFF8B5CF6);
+      default:        return Colors.grey;
+    }
+  }
+
+  IconData _roleIcon(String role) {
+    switch (role) {
+      case 'Student': return Icons.school_rounded;
+      case 'Teacher': return Icons.person_rounded;
+      case 'Parent':  return Icons.family_restroom_rounded;
+      case 'Admin':   return Icons.admin_panel_settings_rounded;
+      default:        return Icons.person_outline;
+    }
+  }
+
+  Widget _sectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: AppTheme.textPrimary,
+      ),
+    );
+  }
+
+  Widget _card(List<Widget> children) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _textField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    bool required = false,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    bool enabled = true,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        decoration: _inputDecoration(label, icon),
+        validator: required
+            ? (v) => (v == null || v.trim().isEmpty) ? '$label is required' : null
+            : null,
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20, color: AppTheme.textSecondary),
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppTheme.accentColor, width: 2),
+      ),
+    );
+  }
+}

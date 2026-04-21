@@ -1013,4 +1013,161 @@ class ApiService {
       throw Exception('AI Teacher help error: $e');
     }
   }
+
+  // ==============================
+  // ADMIN — USER MANAGEMENT
+  // ==============================
+
+  /// Fetch admin dashboard stats
+  Future<Map<String, dynamic>> fetchAdminStats() async {
+    final url = Uri.parse('$_baseUrl/api/admin/stats');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch admin stats');
+    } catch (e) {
+      throw Exception('Error fetching admin stats: $e');
+    }
+  }
+
+  /// Fetch all users with optional filters
+  Future<Map<String, dynamic>> fetchAdminUsers({
+    String? role,
+    String? search,
+    String? status,
+    String? dept,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    final params = <String, String>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (role != null && role.isNotEmpty) params['role'] = role;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    if (dept != null && dept.isNotEmpty) params['dept'] = dept;
+
+    final uri = Uri.parse('$_baseUrl/api/admin/users').replace(queryParameters: params);
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch users');
+    } catch (e) {
+      throw Exception('Error fetching admin users: $e');
+    }
+  }
+
+  /// Fetch single user detail
+  Future<Map<String, dynamic>> fetchAdminUserById(String id) async {
+    final url = Uri.parse('$_baseUrl/api/admin/users/$id');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('User not found');
+    } catch (e) {
+      throw Exception('Error fetching user: $e');
+    }
+  }
+
+  /// Create a new user (any role)
+  Future<Map<String, dynamic>> createAdminUser(Map<String, dynamic> data) async {
+    final url = Uri.parse('$_baseUrl/api/admin/users');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 201) return jsonDecode(response.body);
+      final error = jsonDecode(response.body)['error'] ?? 'Failed to create user';
+      throw Exception(error);
+    } catch (e) {
+      throw Exception('Error creating user: $e');
+    }
+  }
+
+  /// Update an existing user
+  Future<void> updateAdminUser(String id, Map<String, dynamic> data) async {
+    final url = Uri.parse('$_baseUrl/api/admin/users/$id');
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode != 200) {
+        final error = jsonDecode(response.body)['error'] ?? 'Failed to update user';
+        throw Exception(error);
+      }
+    } catch (e) {
+      throw Exception('Error updating user: $e');
+    }
+  }
+
+  /// Delete a user
+  Future<void> deleteAdminUser(String id) async {
+    final url = Uri.parse('$_baseUrl/api/admin/users/$id');
+    try {
+      final response = await http.delete(url);
+      if (response.statusCode != 200) throw Exception('Failed to delete user');
+    } catch (e) {
+      throw Exception('Error deleting user: $e');
+    }
+  }
+
+  /// Activate or deactivate a user
+  Future<void> toggleAdminUserStatus(String id, bool isActive) async {
+    final url = Uri.parse('$_baseUrl/api/admin/users/$id/status');
+    try {
+      final response = await http.patch(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'isActive': isActive}),
+      );
+      if (response.statusCode != 200) throw Exception('Failed to update user status');
+    } catch (e) {
+      throw Exception('Error toggling user status: $e');
+    }
+  }
+
+  /// Bulk create users
+  Future<Map<String, dynamic>> bulkCreateAdminUsers(List<Map<String, dynamic>> users) async {
+    final url = Uri.parse('$_baseUrl/api/admin/users/bulk');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'users': users}),
+      );
+      if (response.statusCode == 201) return jsonDecode(response.body);
+      throw Exception('Bulk upload failed');
+    } catch (e) {
+      throw Exception('Error in bulk upload: $e');
+    }
+  }
+
+  /// Fetch classes for admin dropdowns
+  Future<List<dynamic>> fetchAdminClasses() async {
+    final url = Uri.parse('$_baseUrl/api/admin/classes');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch classes');
+    } catch (e) {
+      throw Exception('Error fetching classes: $e');
+    }
+  }
+
+  /// Fetch students list for parent-child linking
+  Future<List<dynamic>> fetchAdminStudentsList() async {
+    final url = Uri.parse('$_baseUrl/api/admin/students/list');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch students list');
+    } catch (e) {
+      throw Exception('Error fetching students list: $e');
+    }
+  }
 }

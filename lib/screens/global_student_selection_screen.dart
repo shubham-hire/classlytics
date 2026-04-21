@@ -27,7 +27,10 @@ class _GlobalStudentSelectionScreenState extends State<GlobalStudentSelectionScr
   String? _filterYear;
 
   final List<String> _departments = ['All', 'Computer Science', 'Information Technology', 'Mechanical Engineering', 'Electronics & TC', 'Civil Engineering', 'Applied Sciences'];
-  final List<String> _academicYears = ['All', 'First Year', 'Second Year', 'Third Year', 'Final Year'];
+  final List<String> _academicYears = [
+    'All', 'First Year', 'Second Year', 'Third Year', 'Fourth Year',
+    '10th Grade', '11th Grade', '12th Grade'
+  ];
 
   @override
   void initState() {

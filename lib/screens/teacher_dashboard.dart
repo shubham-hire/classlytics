@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
+import '../core/widgets/shared_ui_components.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -93,7 +94,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildSectionHeader('Overview'),
+                    SharedUIComponents.buildSectionTitle('Overview'),
                     TextButton.icon(
                       onPressed: () => context.push('/my-classes'),
                       icon: const Icon(Icons.arrow_forward, size: 16),
@@ -103,49 +104,49 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildSummaryCard(
-                      value: totalStudents,
-                      label: 'Students',
-                      icon: Icons.people_outline_rounded,
-                      color: Colors.blueAccent,
-                      bgColor: const Color(0xFFE3F2FD),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
-                      value: avgAttendance,
-                      label: 'Attendance',
-                      icon: Icons.check_circle_outline_rounded,
-                      color: Colors.green,
-                      bgColor: const Color(0xFFE8F5E9),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
-                      value: avgMarks,
-                      label: 'Avg Marks',
-                      icon: Icons.bar_chart_rounded,
-                      color: Colors.orange,
-                      bgColor: const Color(0xFFFFF3E0),
-                    ),
-                  ],
+                SizedBox(
+                  height: 140,
+                  child: Row(
+                    children: [
+                      SharedUIComponents.buildStatCard(
+                        'Students',
+                        totalStudents,
+                        Icons.people_outline_rounded,
+                        Colors.blueAccent,
+                      ),
+                      const SizedBox(width: 12),
+                      SharedUIComponents.buildStatCard(
+                        'Attendance',
+                        avgAttendance,
+                        Icons.check_circle_outline_rounded,
+                        Colors.green,
+                      ),
+                      const SizedBox(width: 12),
+                      SharedUIComponents.buildStatCard(
+                        'Avg Marks',
+                        avgMarks,
+                        Icons.bar_chart_rounded,
+                        Colors.orange,
+                      ),
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
 
                 _buildTodaysSchedule(scheduleData),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
 
-                _buildQuickActions(),
-                const SizedBox(height: 40),
+                _buildQuickWorkflows(),
+                const SizedBox(height: 32),
 
                 _buildPendingTasks(),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
 
                 _buildAnnouncementsFeed(),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
 
-                _buildSectionHeader('At Risk Students'),
+                SharedUIComponents.buildSectionTitle('At Risk Students'),
                 const SizedBox(height: 16),
                 
                 if (riskStudents.isEmpty)
@@ -191,9 +192,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                           ),
                           title: Row(
                             children: [
-                              Text(
-                                student['name'],
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              Expanded(
+                                child: Text(
+                                  student['name'] ?? 'Unknown',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                               if (risk == 'HIGH') ...[
                                 const SizedBox(width: 8),
@@ -252,74 +256,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        color: Colors.black87,
-        letterSpacing: 0.5,
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard({
-    required String value,
-    required String label,
-    required IconData icon,
-    required Color color,
-    required Color bgColor,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildEmptyRiskState() {
     return Center(
       child: Padding(
@@ -369,7 +305,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Today\'s Schedule'),
+        SharedUIComponents.buildSectionTitle('Today\'s Schedule'),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
@@ -421,8 +357,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis),
+              Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14), overflow: TextOverflow.ellipsis),
             ],
           ),
         ),
@@ -431,11 +367,11 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildQuickWorkflows() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Quick Workflows'),
+        SharedUIComponents.buildSectionTitle('Quick Workflows'),
         const SizedBox(height: 16),
         GridView.count(
           crossAxisCount: 2,
@@ -443,9 +379,9 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.1, // more square shaped
+          childAspectRatio: 1.4, // desktop was 1.1, mobile needs more width
           children: [
-            _buildActionCard('Register\nNew Student', Icons.person_add_alt_1_rounded, Colors.blueAccent, () {
+            _buildActionCard('Register\nStudent', Icons.person_add_alt_1_rounded, Colors.blueAccent, () {
               context.push('/add-student/GLOBAL');
             }),
             _buildActionCard('Student\nDirectory', Icons.badge_rounded, Colors.teal, () {
@@ -457,8 +393,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             _buildActionCard('Mark\nAttendance', Icons.how_to_reg_rounded, Colors.green, () => context.push('/attendance-management')),
             _buildActionCard('Leave\nApprovals', Icons.event_available_rounded, Colors.orange, () => context.push('/leave-approvals')),
             _buildActionCard('Student\nMessages', Icons.forum_rounded, const Color(0xFF1E3A8A), () => context.push('/teacher-inbox')),
-            _buildActionCard('Digital\nLibrary', Icons.local_library_rounded, Colors.purple, () => context.push('/digital-library')),
-            _buildActionCard('Timetable', Icons.table_view_rounded, Colors.indigo, () => context.push('/timetable')),
           ],
         ),
       ],
@@ -470,7 +404,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       onTap: onPressed,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -483,25 +417,28 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           ],
           border: Border.all(color: color.withOpacity(0.2), width: 1.5),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 30),
+              child: Icon(icon, color: color, size: 24),
             ),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Colors.black87,
-                height: 1.2,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                  height: 1.1,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -514,10 +451,10 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Pending Tasks'),
+        SharedUIComponents.buildSectionTitle('Pending Tasks'),
         const SizedBox(height: 16),
         _buildTaskItem('Grade Physics Assignments', 'Class 12-B • Deadline: Today', true),
-        _buildTaskItem('Submit monthly attendance report', 'Admin Dept • Overdue', false),
+        _buildTaskItem('Submit monthly report', 'Admin Dept • Overdue', false),
       ],
     );
   }
@@ -539,12 +476,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
-                Text(subtitle, style: TextStyle(color: isUrgent ? Colors.redAccent : Colors.grey, fontSize: 12)),
+                Text(subtitle, style: TextStyle(color: isUrgent ? Colors.redAccent : Colors.grey, fontSize: 11), overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
+          const SizedBox(width: 8),
           OutlinedButton(
             onPressed: () {},
             style: OutlinedButton.styleFrom(
@@ -552,7 +490,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               minimumSize: const Size(0, 32),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Resolve', style: TextStyle(fontSize: 12)),
+            child: const Text('Resolve', style: TextStyle(fontSize: 11)),
           ),
         ],
       ),
@@ -566,13 +504,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildSectionHeader('Announcements'),
+            SharedUIComponents.buildSectionTitle('Announcements'),
             TextButton(onPressed: () {}, child: const Text('View All', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
         ),
         const SizedBox(height: 8),
-        _buildAnnouncementCard('Staff Meeting at 4 PM', 'Admin', 'Don\'t forget the mandatory staff meeting regarding the upcoming annual sports day preparations in the main hall.'),
-        _buildAnnouncementCard('New Leave Policy Updated', 'HR Dept', 'Please review the updated leave policy document available in the faculty portal.'),
+        _buildAnnouncementCard('Staff Meeting at 4 PM', 'Admin', 'Don\'t forget the mandatory staff meeting regarding the annual sports day.'),
+        _buildAnnouncementCard('New Leave Policy', 'HR Dept', 'Please review the updated leave policy document in the faculty portal.'),
       ],
     );
   }
@@ -592,13 +530,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             children: [
               const Icon(Icons.campaign_rounded, color: Colors.blueAccent, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), overflow: TextOverflow.ellipsis)),
             ],
           ),
           const SizedBox(height: 8),
-          Text(summary, style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4)),
+          Text(summary, style: const TextStyle(color: Colors.black87, fontSize: 13, height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),
-          Text('Posted by: $author • 2 hrs ago', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text('Posted by: $author', style: const TextStyle(color: Colors.grey, fontSize: 12)),
         ],
       ),
     );
@@ -610,3 +548,4 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     return Colors.greenAccent.shade700;
   }
 }
+

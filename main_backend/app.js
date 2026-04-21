@@ -16,6 +16,7 @@ const feeRoutes = require('./routes/feeRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const parentRoutes = require('./routes/parentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const initDb = require('./config/initDb');
 const path = require('path');
 
@@ -60,6 +61,7 @@ app.use('/fee', feeRoutes);
 app.use('/quizzes', quizRoutes);
 app.use('/chat', chatRoutes);
 app.use('/parent', parentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Base route for connectivity check
 app.get('/', (req, res) => {
