@@ -11,6 +11,7 @@ class TeacherMessageHubScreen extends StatefulWidget {
   State<TeacherMessageHubScreen> createState() => _TeacherMessageHubScreenState();
 }
 
+
 class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
   final ApiService _api = ApiService();
   late Future<List<dynamic>> _messagesFuture;
@@ -570,17 +571,36 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _scrollToBottom();
       }
     } catch (e) {
-      setState(() => _messages.removeLast());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send message. Please try again.')),
-        );
+        setState(() {
+          if (isAI) {
+            _messages.add({
+              'sender_id': _aiSenderId,
+              'receiver_id': _myUserId,
+              'sender_name': 'ClassAI',
+              'body': 'ClassAI is taking too long to respond. Please try again in a moment.',
+              'timestamp': DateTime.now().toIso8601String(),
+              'is_read': true,
+            });
+          } else {
+            _messages.remove(optimistic);
+          }
+        });
+        _scrollToBottom();
+
+        if (!isAI) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to send message. Please try again.')),
+          );
+        }
       }
     } finally {
-      setState(() {
-        _isSending = false;
-        _isAITyping = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+          _isAITyping = false;
+        });
+      }
     }
   }
 
@@ -986,5 +1006,3 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 }
-
-

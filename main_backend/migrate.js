@@ -6,12 +6,13 @@ async function migrate() {
       CREATE TABLE IF NOT EXISTS parents (
         id VARCHAR(50) PRIMARY KEY,
         user_id VARCHAR(50),
-        name VARCHAR(255) NOT NULL,
+        name VARCHAR(255),
         relation VARCHAR(100),
-        phone VARCHAR(50) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
+        phone VARCHAR(50),
+        email VARCHAR(255),
+        password VARCHAR(255),
         child_id VARCHAR(50),
+        occupation VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
@@ -34,6 +35,11 @@ async function migrate() {
         throw e;
       }
     }
+
+    // Add roll_no to students if it doesn't exist (used by studentController)
+    try {
+      await db.execute('ALTER TABLE students ADD COLUMN roll_no INT');
+    } catch(e) { /* already exists */ }
     
     // Add fk for child_id in parents
     try {
@@ -41,6 +47,11 @@ async function migrate() {
     } catch(e) {
        // if constraint exists or duplicate, ignore
     }
+
+    // Add unique index for email if present
+    try {
+      await db.execute('ALTER TABLE parents ADD UNIQUE KEY unique_parent_email (email)');
+    } catch(e) { /* already exists */ }
 
     console.log('Migration successful');
     process.exit(0);

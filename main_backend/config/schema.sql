@@ -37,9 +37,11 @@ CREATE TABLE IF NOT EXISTS classes (
 CREATE TABLE IF NOT EXISTS students (
     id VARCHAR(50) PRIMARY KEY, -- Permanent Sequential ID (e.g. STU001)
     user_id VARCHAR(50),
+    roll_no INT,
     dept VARCHAR(50) NOT NULL,
     current_year VARCHAR(20) NOT NULL,
     dob DATE,
+    parent_id VARCHAR(50),
     profile_img VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -49,9 +51,15 @@ CREATE TABLE IF NOT EXISTS students (
 CREATE TABLE IF NOT EXISTS parents (
     id VARCHAR(50) PRIMARY KEY,
     user_id VARCHAR(50),
+    name VARCHAR(255),
+    relation VARCHAR(100),
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    password VARCHAR(255),
     child_id VARCHAR(50), -- Link back to students(id)
     occupation VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_parent_email (email),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (child_id) REFERENCES students(id) ON DELETE SET NULL
 );

@@ -50,12 +50,12 @@ exports.getQuizzesByClass = async (req, res) => {
     const [quizzes] = await db.execute(
       `SELECT q.id, q.title, q.description, q.duration_minutes, q.created_at,
               u.name AS teacher_name,
-              COUNT(qq.id) AS question_count
+              COUNT(DISTINCT qq.id) AS question_count
        FROM quizzes q
-       JOIN users u ON u.id = q.teacher_id
+       LEFT JOIN users u ON u.id = q.teacher_id
        LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
        WHERE q.class_id = ?
-       GROUP BY q.id
+       GROUP BY q.id, q.title, q.description, q.duration_minutes, q.created_at, u.name
        ORDER BY q.created_at DESC`,
       [classId]
     );
@@ -73,16 +73,16 @@ exports.getStudentQuizzes = async (req, res) => {
     const [quizzes] = await db.execute(
       `SELECT q.id, q.title, q.description, q.duration_minutes, q.created_at,
               c.name AS class_name, u.name AS teacher_name,
-              COUNT(qq.id) AS question_count,
+              COUNT(DISTINCT qq.id) AS question_count,
               qs.score, qs.total_marks, qs.submitted_at AS completed_at
        FROM class_enrollments ce
        JOIN quizzes q ON q.class_id = ce.class_id
        JOIN classes c ON c.id = q.class_id
-       JOIN users u ON u.id = q.teacher_id
+       LEFT JOIN users u ON u.id = q.teacher_id
        LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
        LEFT JOIN quiz_submissions qs ON qs.quiz_id = q.id AND qs.student_id = ?
        WHERE ce.student_id = ?
-       GROUP BY q.id, qs.id
+       GROUP BY q.id, q.title, q.description, q.duration_minutes, q.created_at, c.name, u.name, qs.id, qs.score, qs.total_marks, qs.submitted_at
        ORDER BY q.created_at DESC`,
       [studentId, studentId]
     );
@@ -107,19 +107,13 @@ exports.getQuizQuestions = async (req, res) => {
       : 'id, question, option_a, option_b, option_c, option_d, marks';
 
     const [questions] = await db.execute(
-      `SELECT ${cols} FROM quiz_questions WHERE quiz_id = ? ORDER BY ROWNUM() IS NULL`,
-      [quizId]
-    );
-
-    // Fallback in case ROWNUM() is not supported
-    const [qs] = await db.execute(
       `SELECT ${cols} FROM quiz_questions WHERE quiz_id = ?`,
       [quizId]
     );
 
     res.status(200).json({
       quiz: quiz[0],
-      questions: qs,
+      questions,
     });
   } catch (err) {
     console.error('[getQuizQuestions] Error:', err.message);
@@ -152,6 +146,9 @@ exports.submitQuiz = async (req, res) => {
       'SELECT id, correct_option, marks FROM quiz_questions WHERE quiz_id = ?',
       [quizId]
     );
+    if (questions.length === 0) {
+      return res.status(400).json({ error: 'Quiz has no questions.' });
+    }
 
     let score = 0;
     let totalMarks = 0;

@@ -4,6 +4,42 @@ const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
+async function generateStudentId(connection) {
+  await connection.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
+  const [seq] = await connection.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
+  return 'STU' + seq[0].last_value.toString().padStart(3, '0');
+}
+
+function normalizeRollNo(rollNo) {
+  if (rollNo === undefined || rollNo === null || rollNo === '') return null;
+  const parsed = Number.parseInt(rollNo, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+async function getNextClassRollNo(connection, classId) {
+  const [rows] = await connection.execute(
+    'SELECT COALESCE(MAX(roll_no), 0) + 1 AS next_roll_no FROM class_enrollments WHERE class_id = ?',
+    [classId]
+  );
+  return rows[0]?.next_roll_no || 1;
+}
+
+async function enrollStudentInClass(connection, classId, studentId, rollNo) {
+  if (!classId) return null;
+
+  const [classes] = await connection.execute('SELECT id FROM classes WHERE id = ?', [classId]);
+  if (classes.length === 0) {
+    throw new Error(`Class not found: ${classId}`);
+  }
+
+  const classRollNo = normalizeRollNo(rollNo) || await getNextClassRollNo(connection, classId);
+  await connection.execute(
+    'INSERT INTO class_enrollments (class_id, student_id, roll_no) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE roll_no = VALUES(roll_no)',
+    [classId, studentId, classRollNo]
+  );
+  return classRollNo;
+}
+
 exports.getStudentsByClass = async (req, res) => {
   const { classId } = req.params;
 
@@ -24,35 +60,39 @@ exports.getStudentsByClass = async (req, res) => {
 };
 
 exports.addStudent = async (req, res) => {
-  const { name, email, phone, address, country, state, district, city, rollNo, dob, currentYear, dept } = req.body;
+  const { name, email, phone, address, country, state, district, city, classId, rollNo, dob, currentYear, dept } = req.body;
   
-  if (!name || !email || !dept || !currentYear) {
-    return res.status(400).json({ error: 'name, email, dept, and currentYear are required' });
+  if (!name || !email) {
+    return res.status(400).json({ error: 'name and email are required' });
   }
 
   const userId = uuidv4();
   const randomPassword = crypto.randomBytes(4).toString('hex');
+  let connection;
 
   try {
-    // 1. Generate Sequential ID
-    await db.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
-    const [seq] = await db.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
-    const studentId = 'STU' + seq[0].last_value.toString().padStart(3, '0');
+    connection = await db.getConnection();
+    await connection.beginTransaction();
 
-    // 2. Create User (Hashed Password)
+    const studentId = await generateStudentId(connection);
+
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
-    await db.execute(
+    await connection.execute(
       'INSERT INTO users (id, name, email, password, role, phone, address, country, state, district, city) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [userId, name, email, hashedPassword, 'Student', phone || null, address || null, country || null, state || null, district || null, city || null]
     );
 
-    // 3. Create Student record
-    await db.execute(
+    const studentRollNo = normalizeRollNo(rollNo);
+    await connection.execute(
       'INSERT INTO students (id, user_id, roll_no, dept, current_year, dob) VALUES (?, ?, ?, ?, ?, ?)',
-      [studentId, userId, rollNo || null, dept, currentYear, dob || null]
+      [studentId, userId, studentRollNo, dept || 'General', currentYear || '1st Year', dob || null]
     );
 
-    // 4. Send Email & Log Fallback
+    const classRollNo = await enrollStudentInClass(connection, classId, studentId, studentRollNo);
+    await connection.commit();
+    connection.release();
+    connection = null;
+
     console.log(`[AUTH] New Student Registered: ${email} | Temp Password: ${randomPassword}`);
 
     const transporter = nodemailer.createTransport({
@@ -83,9 +123,15 @@ exports.addStudent = async (req, res) => {
     res.status(201).json({ 
       message: 'Student registered successfully', 
       studentId, 
-      id: studentId 
+      id: studentId,
+      classId: classId || null,
+      rollNo: classRollNo || studentRollNo,
     });
   } catch (err) {
+    if (connection) {
+      await connection.rollback();
+      connection.release();
+    }
     console.error('Registration error:', err);
     res.status(500).json({ error: err.message });
   }
@@ -113,20 +159,27 @@ exports.getRegisteredStudents = async (req, res) => {
 
 exports.updateStudent = async (req, res) => {
   const { id } = req.params;
-  const { name, rollNo } = req.body;
+  const { name, rollNo, classId } = req.body;
 
   try {
-    // Update students table
-    if (rollNo !== undefined) {
-      await db.execute('UPDATE students SET roll_no = ? WHERE id = ?', [rollNo, id]);
+    const [student] = await db.execute('SELECT user_id FROM students WHERE id = ?', [id]);
+    if (student.length === 0) {
+      return res.status(404).json({ error: 'Student not found' });
     }
 
-    // Update users table (if name provided)
-    if (name) {
-      const [student] = await db.execute('SELECT user_id FROM students WHERE id = ?', [id]);
-      if (student.length > 0) {
-        await db.execute('UPDATE users SET name = ? WHERE id = ?', [name, student[0].user_id]);
+    if (rollNo !== undefined) {
+      const normalizedRollNo = normalizeRollNo(rollNo);
+      await db.execute('UPDATE students SET roll_no = ? WHERE id = ?', [normalizedRollNo, id]);
+      if (classId) {
+        await db.execute(
+          'UPDATE class_enrollments SET roll_no = ? WHERE class_id = ? AND student_id = ?',
+          [normalizedRollNo, classId, id]
+        );
       }
+    }
+
+    if (name) {
+      await db.execute('UPDATE users SET name = ? WHERE id = ?', [name, student[0].user_id]);
     }
 
     res.status(200).json({ message: 'Student updated successfully' });
@@ -136,32 +189,55 @@ exports.updateStudent = async (req, res) => {
 };
 
 exports.bulkAddStudents = async (req, res) => {
-  const { studentList } = req.body; // studentList: [{name, email, rollNo, dept, year}]
+  const { classId, studentList } = req.body; // studentList: [{name, email, rollNo, dept, year}]
 
   if (!Array.isArray(studentList)) {
     return res.status(400).json({ error: 'studentList array is required' });
   }
 
+  let connection;
   try {
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const created = [];
+
     for (const s of studentList) {
+      if (!s.name || !s.email) {
+        throw new Error('Every student must include name and email');
+      }
+
       const userId = uuidv4();
-      
-      await db.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
-      const [seq] = await db.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
-      const studentId = 'STU' + seq[0].last_value.toString().padStart(3, '0');
+      const studentId = await generateStudentId(connection);
 
       const hashedPassword = await bcrypt.hash('student123', 10);
-      await db.execute(
+      await connection.execute(
         'INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)',
         [userId, s.name, s.email, hashedPassword, 'Student']
       );
-      await db.execute(
+
+      const studentRollNo = normalizeRollNo(s.rollNo);
+      await connection.execute(
         'INSERT INTO students (id, user_id, roll_no, dept, current_year) VALUES (?, ?, ?, ?, ?)',
-        [studentId, userId, s.rollNo || null, s.dept || 'General', s.year || '1st Year']
+        [studentId, userId, studentRollNo, s.dept || 'General', s.year || '1st Year']
       );
+
+      const classRollNo = await enrollStudentInClass(connection, classId, studentId, studentRollNo);
+      created.push({ id: studentId, name: s.name, email: s.email, rollNo: classRollNo || studentRollNo });
     }
-    res.status(201).json({ message: `Successfully registered \${studentList.length} students` });
+
+    await connection.commit();
+    connection.release();
+    connection = null;
+
+    res.status(201).json({
+      message: `Successfully registered ${created.length} students`,
+      students: created,
+    });
   } catch (err) {
+    if (connection) {
+      await connection.rollback();
+      connection.release();
+    }
     res.status(500).json({ error: err.message });
   }
 };
@@ -191,7 +267,7 @@ exports.getStudentById = async (req, res) => {
 
 
 exports.createWithParent = async (req, res) => {
-  const { studentName, studentEmail, parentName, relation, parentPhone, parentEmail, dept, currentYear, country, state, city, address, dob, rollNo } = req.body;
+  const { studentName, studentEmail, parentName, relation, parentPhone, parentEmail, classId, dept, currentYear, country, state, city, address, dob, rollNo } = req.body;
 
   if (!studentName || !parentName || !parentPhone || !parentEmail) {
     return res.status(400).json({ error: 'Required fields missing' });
@@ -229,10 +305,17 @@ exports.createWithParent = async (req, res) => {
       return res.status(400).json({ error: 'Parent with this email already exists' });
     }
 
+    if (studentEmail) {
+      const [existingStudents] = await connection.execute('SELECT id FROM users WHERE email = ?', [studentEmail]);
+      if (existingStudents.length > 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({ error: 'Student with this email already exists' });
+      }
+    }
+
     // 2. Generate STU ID
-    await connection.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
-    const [seq] = await connection.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
-    const studentId = 'STU' + seq[0].last_value.toString().padStart(3, '0');
+    const studentId = await generateStudentId(connection);
 
     // 3. Create Parent Records
     // a) Add to users table for authentication
@@ -256,13 +339,15 @@ exports.createWithParent = async (req, res) => {
     );
 
     // 5. Create Student Record
+    const studentRollNo = normalizeRollNo(rollNo);
     await connection.execute(
       'INSERT INTO students (id, user_id, roll_no, dept, current_year, dob, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [studentId, studentUserId, rollNo || null, dept || 'General', currentYear || '1st Year', dob || null, parentId]
+      [studentId, studentUserId, studentRollNo, dept || 'General', currentYear || '1st Year', dob || null, parentId]
     );
 
     // 6. Update Parent Record with Student ID now that Student exists
     await connection.execute('UPDATE parents SET child_id = ? WHERE id = ?', [studentId, parentId]);
+    const classRollNo = await enrollStudentInClass(connection, classId, studentId, studentRollNo);
 
     await connection.commit();
 
@@ -304,7 +389,13 @@ exports.createWithParent = async (req, res) => {
     transporter.sendMail(mailOptions).catch(e => console.warn('Email warning:', e.message));
 
     connection.release();
-    res.status(201).json({ message: 'Student and parent created successfully', studentId, parentId });
+    res.status(201).json({
+      message: 'Student and parent created successfully',
+      studentId,
+      parentId,
+      classId: classId || null,
+      rollNo: classRollNo || studentRollNo,
+    });
   } catch (err) {
     if (connection) {
       await connection.rollback();

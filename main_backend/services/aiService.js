@@ -4,9 +4,9 @@
  * Model: meta/llama-3.1-8b-instruct
  */
 
-const NVIDIA_BASE_URL =
-  process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const NVIDIA_MODEL = 'meta/llama-3.1-8b-instruct';
+const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 20000);
 
 /**
  * Builds the system + user prompt strings based on available context.
@@ -68,22 +68,26 @@ Answer clearly and concisely. Use simple language. Keep responses under 150 word
  * @returns {Promise<string>}
  */
 async function callAI(prompt) {
-  const nvidiaApiKey = process.env.NVIDIA_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
 
-  if (!nvidiaApiKey || nvidiaApiKey === 'your_nvidia_api_key_here') {
-    console.warn('[AIService] No valid NVIDIA API key found. Returning fallback response.');
+  if (!apiKey || apiKey === 'your_nvidia_api_key_here') {
+    console.warn('[AIService] No valid API key found. Returning fallback response.');
     return "ClassAI is currently unavailable. Please check the server configuration.";
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+
   try {
-    const response = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
+    const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
       method: 'POST',
+      signal: controller.signal,
       headers: {
-        Authorization: `Bearer ${nvidiaApiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: NVIDIA_MODEL,
+        model: GROQ_MODEL,
         messages: [
           { role: 'system', content: prompt.system },
           { role: 'user', content: prompt.user },
@@ -109,8 +113,15 @@ async function callAI(prompt) {
 
     return content.trim();
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.error(`[AIService] AI API request timed out after ${AI_REQUEST_TIMEOUT_MS}ms.`);
+      return "ClassAI is taking too long to respond right now. Please try again in a moment.";
+    }
+
     console.error('[AIService] Fetch error:', err.message);
     return "Sorry, I couldn't reach the AI service right now.";
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

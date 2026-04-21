@@ -10,8 +10,8 @@ class ParentAnalyticsScreen extends StatefulWidget {
 
   const ParentAnalyticsScreen({
     super.key,
-    required this.teacherId,
-    required this.teacherName,
+    this.teacherId = '',
+    this.teacherName = '',
   });
 
   @override
@@ -23,6 +23,8 @@ class _ParentAnalyticsScreenState extends State<ParentAnalyticsScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _marksData;
   List<dynamic> _insights = [];
+  String _teacherId = '';
+  String _teacherName = '';
 
   @override
   void initState() {
@@ -32,27 +34,57 @@ class _ParentAnalyticsScreenState extends State<ParentAnalyticsScreen> {
 
   Future<void> _loadData() async {
     final childId = AuthStore.instance.currentUser?['child_id'] ?? '';
+    final parentId = AuthStore.instance.currentUser?['id'] ?? '';
     if (childId.isEmpty) {
       setState(() => _isLoading = false);
       return;
     }
 
     try {
-      final results = await Future.wait([
-        _apiService.fetchMarks(childId.toString()),
-        _apiService.fetchInsights(childId.toString()).catchError((_) => ['No AI insights generated yet.']),
-      ]);
-      
+      final marks = await _apiService.fetchMarks(childId.toString());
+      final insights = await _apiService
+          .fetchInsights(childId.toString())
+          .catchError((_) => ['No AI insights generated yet.']);
+
+      Map<String, dynamic> childInfo = {};
+      if (parentId.toString().isNotEmpty) {
+        childInfo = await _apiService.fetchChildInfo(parentId.toString()).catchError((_) => <String, dynamic>{});
+      }
+
+      final teacherId = widget.teacherId.isNotEmpty ? widget.teacherId : (childInfo['teacherId']?.toString() ?? '');
+      final teacherName = widget.teacherName.isNotEmpty ? widget.teacherName : (childInfo['teacherName']?.toString() ?? '');
+
       if (mounted) {
         setState(() {
-          _marksData = results[0] as Map<String, dynamic>;
-          _insights = results[1] as List<dynamic>;
+          _marksData = marks as Map<String, dynamic>;
+          _insights = insights as List<dynamic>;
+          _teacherId = teacherId;
+          _teacherName = teacherName;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _openTeacherChat() {
+    if (_teacherId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No teacher is linked to this class yet.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ParentTeacherChatScreen(
+          teacherId: _teacherId,
+          teacherName: _teacherName.isNotEmpty ? _teacherName : 'Teacher',
+        ),
+      ),
+    );
   }
 
   @override
@@ -161,9 +193,7 @@ class _ParentAnalyticsScreenState extends State<ParentAnalyticsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ParentTeacherChatScreen(teacherId: widget.teacherId, teacherName: widget.teacherName)));
-                    },
+                    onPressed: _teacherId.isEmpty ? null : _openTeacherChat,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -304,7 +334,7 @@ class _ParentAnalyticsScreenState extends State<ParentAnalyticsScreen> {
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ParentTeacherChatScreen(teacherId: widget.teacherId, teacherName: widget.teacherName)));
+                  _openTeacherChat();
                 },
                 icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
                 label: const Text('Execute Step 3 (Message Teacher)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),

@@ -53,9 +53,17 @@ const initDb = async () => {
             { table: 'users', col: 'district', type: 'VARCHAR(100)' },
             { table: 'users', col: 'city', type: 'VARCHAR(100)' },
             { table: 'users', col: 'dept', type: 'VARCHAR(50)' },
+            { table: 'students', col: 'roll_no', type: 'INT' },
             { table: 'students', col: 'dob', type: 'DATE' },
             { table: 'students', col: 'current_year', type: 'VARCHAR(20)' },
             { table: 'students', col: 'dept', type: 'VARCHAR(50)' },
+            { table: 'students', col: 'parent_id', type: 'VARCHAR(50)' },
+            { table: 'parents', col: 'name', type: 'VARCHAR(255)' },
+            { table: 'parents', col: 'relation', type: 'VARCHAR(100)' },
+            { table: 'parents', col: 'phone', type: 'VARCHAR(50)' },
+            { table: 'parents', col: 'email', type: 'VARCHAR(255)' },
+            { table: 'parents', col: 'password', type: 'VARCHAR(255)' },
+            { table: 'parents', col: 'occupation', type: 'VARCHAR(100)' },
         ];
 
         // Ensure class_enrollments has roll_no column
@@ -78,6 +86,18 @@ const initDb = async () => {
                 // Column likely already exists
             }
         }
+
+        // Ensure parent email is unique if present
+        try {
+            await db.execute('ALTER TABLE parents ADD UNIQUE KEY unique_parent_email (email)');
+            console.log('📡 [DB MIGRATION] Added unique index unique_parent_email to parents(email)');
+        } catch (e) { /* already exists */ }
+
+        // Ensure students.parent_id can reference parents(id)
+        try {
+            await db.execute('ALTER TABLE students ADD CONSTRAINT fk_student_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added FK fk_student_parent (students.parent_id -> parents.id)');
+        } catch (e) { /* already exists */ }
     } catch (err) {
         console.error('❌ [DB INIT ERROR] Table initialization failed:', err.message);
     }

@@ -191,6 +191,7 @@ class ApiService {
     required String state,
     required String district,
     required String city,
+    required String classId,
     required String dept,
     required String currentYear,
     required String dob,
@@ -216,6 +217,7 @@ class ApiService {
           'state': state,
           'district': district,
           'city': city,
+          'classId': classId,
           'dept': dept,
           'currentYear': currentYear,
           'dob': dob,
@@ -701,7 +703,7 @@ class ApiService {
           'body': body,
           if (role != null) 'role': role,
         }),
-      );
+      ).timeout(const Duration(seconds: 35));
       if (response.statusCode == 201) return jsonDecode(response.body) as Map<String, dynamic>;
       throw Exception('Chat message failed: ${response.statusCode}');
     } catch (e) {

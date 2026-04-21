@@ -348,6 +348,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         state: _selectedState!,
         district: 'N/A',
         city: _selectedCity!,
+        classId: widget.classId,
         dob: _dobController.text,
         currentYear: _selectedYear!,
         dept: _selectedDept!,

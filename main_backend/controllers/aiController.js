@@ -191,12 +191,17 @@ exports.getHomeworkHelp = async (req, res) => {
     return res.status(400).json({ error: "Query is required." });
   }
 
-  const nvidiaApiKey = process.env.NVIDIA_API_KEY;
-  const nvidiaBaseUrl = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-  // Use vision model when image is provided, text model otherwise
-  const textModel   = process.env.NVIDIA_MODEL        || 'meta/llama-3.1-70b-instruct';
-  const visionModel = process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-11b-vision-instruct';
-  const nvidiaModel = imageBase64 ? visionModel : textModel;
+  let apiKey, baseUrl, targetModel;
+  
+  if (imageBase64) {
+    apiKey = process.env.NVIDIA_API_KEY;
+    baseUrl = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+    targetModel = process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-90b-vision-instruct';
+  } else {
+    apiKey = process.env.GROQ_API_KEY || process.env.NVIDIA_API_KEY;
+    baseUrl = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+    targetModel = process.env.GROQ_API_KEY ? (process.env.GROQ_MODEL || 'llama-3.1-8b-instant') : (process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct');
+  }
 
   // ── Build student context from DB ─────────────────────────
   let studentContext = '';
@@ -270,9 +275,9 @@ Guidelines:
 - Keep responses clear and concise (2–4 paragraphs). Use emojis sparingly.
 - Guide students to understand, don't just give answers.`;
 
-  if (!nvidiaApiKey || nvidiaApiKey === 'your_nvidia_api_key_here') {
+  if (!apiKey || apiKey === 'your_nvidia_api_key_here') {
     return res.status(200).json({
-      answer: "I'm Classlytics AI! I need a valid NVIDIA API key to analyze images and provide personalized responses.",
+      answer: "I'm Classlytics AI! I need a valid API key to provide personalized responses.",
       aiModel: "Classlytics-Fallback-v1",
       timestamp: new Date().toISOString()
     });
@@ -293,15 +298,19 @@ Guidelines:
     userContent = query;
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds
+
   try {
-    const response = await fetch(`${nvidiaBaseUrl}/chat/completions`, {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
+      signal: controller.signal,
       headers: {
-        'Authorization': `Bearer ${nvidiaApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: nvidiaModel,
+        model: targetModel,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userContent },
@@ -311,6 +320,7 @@ Guidelines:
         stream: false,
       }),
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errBody = await response.text();
@@ -320,12 +330,16 @@ Guidelines:
 
     const data = await response.json();
     const answer = data.choices?.[0]?.message?.content || "I couldn't generate a response. Please try rephrasing.";
-    const usedModel = data.model || nvidiaModel;
+    const usedModel = data.model || targetModel;
 
     console.log(`[AI] ${imageBase64 ? '📸 Vision' : '💬 Text'} query answered using ${usedModel}`);
     res.status(200).json({ answer, aiModel: usedModel, hadImage: !!imageBase64, timestamp: new Date().toISOString() });
   } catch (err) {
-    console.error('[NVIDIA AI] Fetch error:', err.message);
+    if (err.name === 'AbortError') {
+      console.error('[AI] Fetch timeout exceeded.');
+      return res.status(504).json({ error: 'AI service took too long to respond. Please try again.' });
+    }
+    console.error('[AI] Fetch error:', err.message);
     res.status(500).json({ error: 'Failed to reach AI service.', details: err.message });
   }
 };
@@ -337,9 +351,9 @@ exports.getTeacherHelp = async (req, res) => {
     return res.status(400).json({ error: "Query is required." });
   }
 
-  const nvidiaApiKey = process.env.NVIDIA_API_KEY;
-  const nvidiaBaseUrl = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-  const textModel = process.env.NVIDIA_MODEL || 'meta/llama-3.1-70b-instruct';
+  const apiKey = process.env.GROQ_API_KEY || process.env.NVIDIA_API_KEY;
+  const baseUrl = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+  const textModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
   let teacherContext = '';
   if (teacherId) {
@@ -398,14 +412,19 @@ Subject Performance: ${subjectStats}
       max_tokens: 800
     };
 
-    const response = await fetch(`${nvidiaBaseUrl}/chat/completions`, {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
+      signal: controller.signal,
       headers: {
-        'Authorization': `Bearer ${nvidiaApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json();
     if (data.choices && data.choices[0] && data.choices[0].message) {
@@ -414,6 +433,9 @@ Subject Performance: ${subjectStats}
       res.status(500).json({ error: 'Invalid response from model' });
     }
   } catch (err) {
+    if (err.name === 'AbortError') {
+      return res.status(504).json({ error: 'AI took too long to answer' });
+    }
     res.status(500).json({ error: err.message });
   }
 };
