@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../services/api_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../models/teacher_admin.dart';
+import '../admin_shell.dart';
 
 class TeacherListScreen extends StatefulWidget {
   const TeacherListScreen({super.key});
@@ -45,7 +46,11 @@ class _TeacherListScreenState extends State<TeacherListScreen> {
         content: const Text('This will permanently delete the teacher and their user account.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -70,124 +75,166 @@ class _TeacherListScreenState extends State<TeacherListScreen> {
       return t.name.toLowerCase().contains(q) || t.email.toLowerCase().contains(q) || t.employeeId.toLowerCase().contains(q);
     }).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: const Text('Teacher Management', style: TextStyle(fontWeight: FontWeight.w700)),
-        backgroundColor: const Color(0xFF1E293B),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loadTeachers),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/admin/teachers/add'),
-        backgroundColor: const Color(0xFF6366F1),
-        icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text('Add Teacher', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-      ),
-      body: Column(
+    return AdminShell(
+      title: 'Teacher Management',
+      child: Column(
         children: [
+          // ─── CONTROL BAR ───
           Container(
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFF1E293B),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search teachers...',
-                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                hintStyle: const TextStyle(color: Colors.white54),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-              style: const TextStyle(color: Colors.white),
-              onChanged: (v) => setState(() => _searchQuery = v),
+            padding: const EdgeInsets.all(24),
+            color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search by name, email, or employee ID...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                    ),
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: () => context.push('/admin/teachers/add'),
+                  icon: const Icon(Icons.person_add_rounded, size: 18),
+                  label: const Text('Add Teacher'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.adminAccent,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ),
+
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+          // ─── DATA CONTENT ───
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : filtered.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _loadTeachers,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) => _buildTeacherCard(filtered[index]),
-                        ),
-                      ),
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth > 900) {
+                        return _buildTeacherTable(filtered);
+                      } else {
+                        return _buildTeacherList(filtered);
+                      }
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTeacherCard(TeacherAdmin teacher) {
+  Widget _buildTeacherTable(List<TeacherAdmin> filtered) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      width: double.infinity,
+      margin: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundColor: const Color(0xFFE2E8F0),
-          backgroundImage: teacher.profileImg != null && teacher.profileImg!.isNotEmpty
-              ? NetworkImage('${ApiService.baseUrl}/uploads/${teacher.profileImg}')
-              : null,
-          child: teacher.profileImg == null || teacher.profileImg!.isEmpty
-              ? Text(teacher.name.isNotEmpty ? teacher.name[0].toUpperCase() : '?', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 20))
-              : null,
-        ),
-        title: Text(teacher.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text('${teacher.designation} • ${teacher.employeeId}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.email_outlined, size: 14, color: AppTheme.textSecondary),
-                const SizedBox(width: 4),
-                Expanded(child: Text(teacher.email, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12), overflow: TextOverflow.ellipsis)),
-              ],
-            ),
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
+          dataRowHeight: 80,
+          columns: const [
+            DataColumn(label: Text('TEACHER', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('DESIGNATION', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('EMPLOYEE ID', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('ACTIONS', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit_rounded, color: Color(0xFF6366F1)),
-              onPressed: () => context.go('/admin/teachers/edit/${teacher.id}'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-              onPressed: () => _deleteTeacher(teacher.id),
-            ),
-          ],
+          rows: filtered.map((teacher) {
+            return DataRow(cells: [
+              DataCell(
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: const Color(0xFFE2E8F0),
+                      backgroundImage: teacher.profileImg != null && teacher.profileImg!.isNotEmpty
+                          ? NetworkImage('${ApiService.baseUrl}/uploads/${teacher.profileImg}')
+                          : null,
+                      child: teacher.profileImg == null || teacher.profileImg!.isEmpty
+                          ? Text(teacher.name.isNotEmpty ? teacher.name[0].toUpperCase() : '?', 
+                              style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold))
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(teacher.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(teacher.email, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              DataCell(Text(teacher.designation)),
+              DataCell(Text(teacher.employeeId)),
+              DataCell(
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.blue),
+                      onPressed: () => context.push('/admin/teachers/edit/${teacher.id}').then((_) => _loadTeachers()),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      onPressed: () => _deleteTeacher(teacher.id),
+                    ),
+                  ],
+                ),
+              ),
+            ]);
+          }).toList(),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.school_outlined, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text('No teachers found', style: TextStyle(fontSize: 18, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-        ],
-      ),
+  Widget _buildTeacherList(List<TeacherAdmin> filtered) {
+    if (filtered.isEmpty) {
+      return const Center(child: Text('No teachers found'));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final teacher = filtered[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFFE2E8F0),
+              backgroundImage: teacher.profileImg != null && teacher.profileImg!.isNotEmpty
+                  ? NetworkImage('${ApiService.baseUrl}/uploads/${teacher.profileImg}')
+                  : null,
+              child: teacher.profileImg == null || teacher.profileImg!.isEmpty
+                  ? Text(teacher.name[0].toUpperCase())
+                  : null,
+            ),
+            title: Text(teacher.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(teacher.designation),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/admin/teachers/edit/${teacher.id}'),
+          ),
+        );
+      },
     );
   }
 }

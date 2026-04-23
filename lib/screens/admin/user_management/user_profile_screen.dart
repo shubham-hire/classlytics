@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../services/api_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../admin_shell.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
@@ -43,25 +45,112 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  Future<void> _generateAIFeedback() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Analyzing student data...', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('Generating personalized feedback...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final result = await _api.generateStudentFeedback(widget.userId);
+      Navigator.pop(context); // Close loading dialog
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.auto_awesome, color: Colors.purple, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text('AI Academic Feedback'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Feedback for ${result['studentName']}\'s parents:', 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSecondary)),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: MarkdownBody(
+                    data: result['feedback'],
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                      strong: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.adminAccent),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Future: Add copy to clipboard or send functionality
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Feedback ready to be shared!'))
+                );
+              },
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copy Feedback'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.adminAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to generate AI feedback: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('User Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF1E293B),
-        foregroundColor: Colors.white,
-        actions: [
-          if (_userData != null)
-            TextButton.icon(
-              onPressed: () => context.push('/admin/users/edit/${widget.userId}').then((_) => _loadUserProfile()),
-              icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
-              label: const Text('Edit', style: TextStyle(color: Colors.white)),
-            ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: _loading
+    return AdminShell(
+      title: 'User Profile',
+      child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
@@ -158,6 +247,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ],
             ),
           ),
+          if (_userData != null)
+            IconButton(
+              onPressed: () => context.push('/admin/users/edit/${widget.userId}').then((_) => _loadUserProfile()),
+              icon: const Icon(Icons.edit_rounded, color: AppTheme.adminAccent),
+              tooltip: 'Edit Profile',
+            ),
         ],
       ),
     );
@@ -174,6 +269,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _statCard('Attendance', '${_userData!['attendance_percentage'] ?? 0}%', Colors.blue),
         _statCard('Avg Marks', '${_userData!['average_marks'] ?? 0}', Colors.orange),
       ]),
+      const SizedBox(height: 24),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _generateAIFeedback,
+          icon: const Icon(Icons.auto_awesome, size: 20, color: Colors.purple),
+          label: const Text('✨ Generate AI Feedback', style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            side: const BorderSide(color: Colors.purple, width: 1.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            backgroundColor: Colors.purple.withOpacity(0.02),
+          ),
+        ),
+      ),
     ]);
   }
 

@@ -71,7 +71,11 @@ class _UserFormScreenState extends State<UserFormScreen> {
     'Mechanical Engineering',
     'Electronics & TC',
     'Civil Engineering',
-    'Applied Sciences'
+    'Applied Sciences',
+    'Science',
+    'Commerce',
+    'Arts',
+    'General'
   ];
 
   @override
@@ -114,8 +118,12 @@ class _UserFormScreenState extends State<UserFormScreen> {
         _emailController.text = user['email'] ?? '';
         _phoneController.text = user['phone'] ?? '';
         _addressController.text = user['address'] ?? '';
-        _deptController.text = user['dept'] ?? '';
         _selectedRole = user['role'] ?? 'Student';
+        final dept = user['dept'] ?? '';
+        _deptController.text = dept;
+        if (dept.isNotEmpty && !_departments.contains(dept)) {
+          _departments.add(dept);
+        }
         _selectedCountry = user['country'] ?? 'India';
         _selectedState = user['state'];
         _selectedCity = user['city'];

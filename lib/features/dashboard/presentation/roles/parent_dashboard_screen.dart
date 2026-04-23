@@ -6,6 +6,7 @@ import 'parent_tasks_screen.dart';
 import 'parent_analytics_screen.dart';
 import 'parent_fee_screen.dart';
 import 'parent_teacher_chat_screen.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -317,7 +318,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primaryColor.withOpacity(0.8), AppTheme.primaryColor],
+          colors: [AppTheme.primaryColor.withOpacity(0.9), AppTheme.primaryColor],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -328,10 +329,20 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.auto_awesome_rounded, color: Colors.white),
-              const SizedBox(width: 8),
-              const Text('Weekly AI Summary', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('Weekly AI Insight', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                child: const Text('Beta', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -339,15 +350,96 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             future: _apiService.fetchWeeklySummary(AuthStore.instance.currentUser?['child_id']?.toString() ?? ''),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: Colors.white));
+                return const Center(child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                ));
               }
               if (snapshot.hasError) {
-                return const Text('Summary not available.', style: TextStyle(color: Colors.white, fontSize: 14));
+                return const Text('Summary not available right now. We\'re gathering your child\'s data!', 
+                  style: TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic));
               }
-              return Text(snapshot.data ?? 'No summary.', style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5));
+              
+              final content = snapshot.data ?? 'No summary available.';
+              
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    content.split('\n').first.replaceAll('**', ''), // Just the first line/mood
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _showFullWeeklySummary(content),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppTheme.primaryColor,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Read Full Report', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              );
             }
           ),
         ],
+      ),
+    );
+  }
+
+  void _showFullWeeklySummary(String markdown) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded, color: AppTheme.primaryColor, size: 28),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('Weekly Progress Report', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  )
+                ],
+              ),
+            ),
+            Expanded(
+              child: Markdown(
+                data: markdown,
+                padding: const EdgeInsets.all(24),
+                styleSheet: MarkdownStyleSheet(
+                  h1: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                  h2: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, height: 2),
+                  p: const TextStyle(fontSize: 15, height: 1.6, color: AppTheme.textPrimary),
+                  listBullet: const TextStyle(fontSize: 15, color: AppTheme.primaryColor),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

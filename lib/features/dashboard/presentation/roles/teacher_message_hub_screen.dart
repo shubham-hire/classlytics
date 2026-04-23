@@ -225,13 +225,21 @@ class _TeacherMessageHubScreenState extends State<TeacherMessageHubScreen> {
   }
 
   void _showNewChatBottomSheet() {
+    final userId = _userId;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
+        if (userId.isEmpty) {
+          return Container(
+            height: 200,
+            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+            child: const Center(child: Text('Session expired. Please log in again.')),
+          );
+        }
         return FutureBuilder<List<dynamic>>(
-          future: _api.fetchContacts(_userId),
+          future: _api.fetchContacts(userId),
           builder: (context, snapshot) {
             Widget content;
             if (snapshot.connectionState == ConnectionState.waiting) {

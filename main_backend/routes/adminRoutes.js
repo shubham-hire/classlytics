@@ -4,6 +4,7 @@ const adminController = require('../controllers/adminController');
 
 // Dashboard stats
 router.get('/stats', adminController.getStats);
+router.get('/visual-analytics', adminController.getVisualAnalytics);
 
 // User CRUD
 router.get('/users', adminController.getUsers);

@@ -41,6 +41,8 @@ dependencies:
   intl: ^0.20.2
   image_picker: ^1.1.2
   dropdown_search: ^7.0.0
+  flutter_markdown: ^0.7.7+1
+  fl_chart: ^1.2.0
 
 
 dev_dependencies:

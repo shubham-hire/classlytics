@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:async';
 
 class AiReportGeneratorScreen extends StatefulWidget {
@@ -244,9 +245,14 @@ Recommendations:
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              child: Text(
-                _generatedReport,
-                style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+              child: MarkdownBody(
+                data: _generatedReport,
+                styleSheet: MarkdownStyleSheet(
+                  p: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+                  strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                  h1: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                  h2: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
               ),
             ),
           ),

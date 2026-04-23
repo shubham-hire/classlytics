@@ -94,7 +94,18 @@ exports.getUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
   const { id } = req.params;
   try {
-    const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
+    // 1. Try finding by User UUID
+    let [users] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
+    
+    // 2. If not found, try finding by Student ID (STUxxx)
+    if (users.length === 0) {
+      [users] = await db.execute(`
+        SELECT u.* FROM users u
+        JOIN students s ON s.user_id = u.id
+        WHERE s.id = ?
+      `, [id]);
+    }
+
     if (users.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const user = users[0];
@@ -439,6 +450,58 @@ exports.getStudentsList = async (req, res) => {
     `);
     res.status(200).json(rows);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─── GET /api/admin/visual-analytics ───
+exports.getVisualAnalytics = async (req, res) => {
+  try {
+    // 1. Fee Trends (Monthly Collection - Last 6 Months)
+    // Cast to FLOAT to avoid String results in JSON
+    const [feeRows] = await db.execute(`
+      SELECT 
+        DATE_FORMAT(created_at, '%b %Y') as month,
+        CAST(SUM(paid_amount) AS FLOAT) as total
+      FROM fees
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+      GROUP BY month
+      ORDER BY MIN(created_at) ASC
+    `);
+
+    // 2. Attendance Daily (Last 14 days)
+    const [attRows] = await db.execute(`
+      SELECT 
+        DATE_FORMAT(date, '%d %b') as day,
+        CAST(ROUND(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) / COUNT(*) * 100) AS FLOAT) as pct
+      FROM attendance
+      WHERE date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
+      GROUP BY day
+      ORDER BY MIN(date) ASC
+    `);
+
+    // 3. Subject Performance (Averages)
+    const [marksRows] = await db.execute(`
+      SELECT 
+        subject,
+        CAST(ROUND(AVG(score/max_score * 100)) AS FLOAT) as avg
+      FROM marks
+      GROUP BY subject
+      ORDER BY avg DESC
+      LIMIT 6
+    `);
+
+    // 4. Role Distribution (Pie chart data)
+    const [roleRows] = await db.execute('SELECT role, COUNT(*) as count FROM users GROUP BY role');
+
+    res.status(200).json({
+      feeTrends: feeRows,
+      attendanceDaily: attRows,
+      subjectPerformance: marksRows,
+      roleDistribution: roleRows
+    });
+  } catch (err) {
+    console.error('[Admin Visual Analytics] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };

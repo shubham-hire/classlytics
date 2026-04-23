@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class AiAutoGraderModal extends StatefulWidget {
   final Map<String, dynamic>? assignment;
@@ -196,7 +197,13 @@ class _AiAutoGraderModalState extends State<AiAutoGraderModal> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8)),
-            child: const Text('Good definition of gravity. To achieve full marks, include the formula for Newton\'s law of universal gravitation.', style: TextStyle(fontSize: 13, height: 1.4)),
+            child: MarkdownBody(
+              data: 'Good definition of gravity. To achieve full marks, include the formula for **Newton\'s law of universal gravitation**.',
+              styleSheet: MarkdownStyleSheet(
+                p: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
+                strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+            ),
           ),
           const Spacer(),
           ElevatedButton(

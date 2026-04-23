@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../models/fee_structure.dart';
 import '../../../services/api_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../admin_shell.dart';
 
 class FeeStructureListScreen extends StatefulWidget {
   const FeeStructureListScreen({super.key});
@@ -82,86 +83,87 @@ class _FeeStructureListScreenState extends State<FeeStructureListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Fee Structures', style: TextStyle(fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.go('/admin'),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.assignment_ind_rounded),
-            tooltip: 'Manage Assignments',
-            onPressed: () async {
-              await context.push('/admin/fees/assignments');
-              _load();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add Fee Structure',
-            onPressed: () async {
-              await context.push('/admin/fees/structure/new');
-              _load();
-            },
-          ),
-        ],
-      ),
-      body: Column(
+    return AdminShell(
+      title: 'Fee Structures',
+      child: Column(
         children: [
-          // ─── Year Filter ───
+          // ─── CONTROL BAR ───
           Container(
+            padding: const EdgeInsets.all(24),
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const Text('Year:', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
-                  const SizedBox(width: 10),
-                  ..._academicYears.map((yr) {
-                    final isSelected = _filterYear == yr;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(yr.isEmpty ? 'All' : yr),
-                        selected: isSelected,
-                        onSelected: (_) {
-                          setState(() => _filterYear = yr);
-                          _load();
-                        },
-                        selectedColor: const Color(0xFF1E293B),
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : AppTheme.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        const Text('Filter Year:', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+                        const SizedBox(width: 12),
+                        ..._academicYears.map((yr) {
+                          final isSelected = _filterYear == yr;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(yr.isEmpty ? 'All' : yr),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                setState(() => _filterYear = yr);
+                                _load();
+                              },
+                              selectedColor: AppTheme.adminPrimary,
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.white : AppTheme.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await context.push('/admin/fees/structure/new');
+                    _load();
+                  },
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('New Structure'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.adminAccent,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // ─── Content ───
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+          // ─── CONTENT ───
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _structures.isEmpty
                     ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _structures.length,
-                          itemBuilder: (_, i) => _buildCard(_structures[i]),
-                        ),
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final crossAxisCount = constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 800 ? 2 : 1);
+                          return GridView.builder(
+                            padding: const EdgeInsets.all(24),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: 24,
+                              mainAxisSpacing: 24,
+                              mainAxisExtent: 420,
+                            ),
+                            itemCount: _structures.length,
+                            itemBuilder: (_, i) => _buildCard(_structures[i]),
+                          );
+                        },
                       ),
           ),
         ],
@@ -174,32 +176,9 @@ class _FeeStructureListScreenState extends State<FeeStructureListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6366F1).withOpacity(0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.account_balance_wallet_rounded, size: 56, color: Color(0xFF6366F1)),
-          ),
-          const SizedBox(height: 20),
-          const Text('No Fee Structures', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          const Text('Create a fee structure to get started', style: TextStyle(color: AppTheme.textSecondary)),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () async {
-              await context.push('/admin/fees/structure/new');
-              _load();
-            },
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Add Fee Structure'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
+          Icon(Icons.account_balance_wallet_rounded, size: 64, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text('No Fee Structures found', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
         ],
       ),
     );
@@ -207,26 +186,27 @@ class _FeeStructureListScreenState extends State<FeeStructureListScreen> {
 
   Widget _buildCard(FeeStructure fs) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─── Header ───
+          // Header
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
               children: [
@@ -234,73 +214,63 @@ class _FeeStructureListScreenState extends State<FeeStructureListScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(fs.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                      Text(fs.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          _pill(Icons.class_rounded, '${fs.className} - ${fs.classSection}'),
-                          const SizedBox(width: 8),
-                          _pill(Icons.calendar_today_rounded, fs.academicYear),
-                        ],
-                      ),
+                      Text('${fs.className} - ${fs.classSection} | ${fs.academicYear}', 
+                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                     ],
                   ),
                 ),
-                Text(
-                  '₹${_fmt(fs.totalFee)}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20),
-                ),
+                Text('₹${_fmt(fs.totalFee)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppTheme.adminAccent)),
               ],
             ),
           ),
-          // ─── Fee Components ───
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _feeRow('Tuition Fee', fs.tuitionFee, const Color(0xFF3B82F6)),
-                _feeRow('Exam Fee', fs.examFee, const Color(0xFFF59E0B)),
-                _feeRow('Transport Fee', fs.transportFee, const Color(0xFF10B981)),
-                _feeRow('Library Fee', fs.libraryFee, const Color(0xFF8B5CF6)),
-                _feeRow('Sports Fee', fs.sportsFee, const Color(0xFFEF4444)),
-                _feeRow('Miscellaneous', fs.miscellaneousFee, const Color(0xFF6B7280)),
-                if (fs.dueDate != null) ...[
-                  const Divider(height: 20),
-                  Row(
-                    children: [
-                      const Icon(Icons.event_rounded, size: 16, color: AppTheme.textSecondary),
-                      const SizedBox(width: 6),
-                      Text('Due: ${fs.dueDate}', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-                    ],
-                  ),
+          
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _feeItem('Tuition Fee', fs.tuitionFee, Colors.blue),
+                  _feeItem('Exam Fee', fs.examFee, Colors.orange),
+                  _feeItem('Transport Fee', fs.transportFee, Colors.green),
+                  _feeItem('Library Fee', fs.libraryFee, Colors.purple),
+                  _feeItem('Sports Fee', fs.sportsFee, Colors.red),
+                  _feeItem('Miscellaneous', fs.miscellaneousFee, Colors.grey),
+                  const Spacer(),
+                  if (fs.dueDate != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.event_rounded, size: 14, color: AppTheme.textSecondary),
+                        const SizedBox(width: 6),
+                        Text('Due: ${fs.dueDate}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      ],
+                    ),
                 ],
-              ],
+              ),
             ),
           ),
-          // ─── Actions ───
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
-            ),
+          
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
               children: [
                 Expanded(
                   child: TextButton.icon(
-                    icon: const Icon(Icons.edit_rounded, size: 18),
-                    label: const Text('Edit'),
                     onPressed: () async {
                       await context.push('/admin/fees/structure/edit/${fs.id}');
                       _load();
                     },
+                    icon: const Icon(Icons.edit_rounded, size: 16),
+                    label: const Text('Edit'),
                   ),
                 ),
-                Container(width: 1, height: 40, color: Colors.grey.shade200),
                 Expanded(
                   child: TextButton.icon(
-                    icon: const Icon(Icons.delete_rounded, size: 18, color: Colors.red),
-                    label: const Text('Delete', style: TextStyle(color: Colors.red)),
                     onPressed: () => _delete(fs),
+                    icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                    label: const Text('Delete', style: TextStyle(color: Colors.red)),
                   ),
                 ),
               ],
@@ -311,34 +281,21 @@ class _FeeStructureListScreenState extends State<FeeStructureListScreen> {
     );
   }
 
-  Widget _pill(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
-  Widget _feeRow(String label, double amount, Color color) {
+  Widget _feeItem(String label, double amount, Color color) {
     if (amount <= 0) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(width: 4, height: 16, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(width: 10),
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary))),
-          Text('₹${_fmt(amount)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+          Row(
+            children: [
+              Container(width: 4, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 10),
+              Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+            ],
+          ),
+          Text('₹${_fmt(amount)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         ],
       ),
     );

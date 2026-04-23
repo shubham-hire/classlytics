@@ -41,6 +41,8 @@ import '../../screens/admin/fees/fee_assignment_screen.dart';
 import '../../screens/admin/fees/fee_reports_screen.dart';
 import '../../screens/admin/user_management/add_teacher_screen.dart';
 import '../../screens/admin/user_management/teacher_list_screen.dart';
+import '../../screens/admin/communication/admin_announcements_screen.dart';
+import '../../screens/admin/risk_tracker/admin_risk_tracker_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -83,6 +85,14 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: 'my-classes',
           builder: (context, state) => const ClassListScreen(),
+        ),
+        GoRoute(
+          path: 'announcements',
+          builder: (context, state) => const AdminAnnouncementsScreen(),
+        ),
+        GoRoute(
+          path: 'risk-tracker',
+          builder: (context, state) => const AdminRiskTrackerScreen(),
         ),
       ],
     ),
@@ -263,6 +273,13 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/fees/reports',
       builder: (context, state) => const FeeReportsScreen(),
     ),
-
+    GoRoute(
+      path: '/admin/announcements',
+      builder: (context, state) => const AdminAnnouncementsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/risk-tracker',
+      builder: (context, state) => const AdminRiskTrackerScreen(),
+    ),
   ],
 );

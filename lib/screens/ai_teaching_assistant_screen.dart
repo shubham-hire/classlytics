@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class AiTeachingAssistantScreen extends StatefulWidget {
   const AiTeachingAssistantScreen({super.key});
@@ -339,14 +340,23 @@ class _AiTeachingAssistantScreenState extends State<AiTeachingAssistantScreen> {
                   if (!isUser) BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
                 ],
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: isUser ? Colors.white : Colors.black87,
-                  fontSize: 15,
-                  height: 1.4,
-                ),
-              ),
+              child: isUser
+                  ? Text(
+                      message.text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
+                    )
+                  : MarkdownBody(
+                      data: message.text,
+                      styleSheet: MarkdownStyleSheet(
+                        p: const TextStyle(color: Colors.black87, fontSize: 15, height: 1.4),
+                        strong: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                        listBullet: const TextStyle(color: Color(0xFF1E3A8A)),
+                      ),
+                    ),
             ),
           ),
           

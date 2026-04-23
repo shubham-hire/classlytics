@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:classlytics/core/theme/app_theme.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_store.dart';
 import '../../../../screens/attendance_management_screen.dart';
@@ -104,6 +105,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildLiveStats(),
+                const SizedBox(height: 32),
+
+                // AI Class Deep Dive
+                _buildAIClassAnalysis(),
                 const SizedBox(height: 32),
 
                 // At-Risk Students
@@ -413,6 +418,157 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
             ),
           ),
           Text(time, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIClassAnalysis() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _dashboardFuture,
+      builder: (context, snapshot) {
+        final classes = (snapshot.data?['classes'] as List<dynamic>?) ?? [];
+        if (classes.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, color: Colors.indigo, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Smart Class Deep Dive',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 120,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: classes.length,
+                itemBuilder: (context, index) {
+                  final c = classes[index];
+                  return Container(
+                    width: 200,
+                    margin: const EdgeInsets.only(right: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Colors.indigo, Color(0xFF4F46E5)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(color: Colors.indigo.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c['name'] ?? 'Class',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          'Section: ${c['section'] ?? 'A'}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
+                        ),
+                        const Spacer(),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: TextButton(
+                            onPressed: () => _showAIAnalysisDialog(c['id'].toString(), c['name'] ?? 'Class'),
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.2),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Analyze AI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAIAnalysisDialog(String classId, String className) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Icon(Icons.auto_awesome_rounded, color: Colors.indigo),
+            const SizedBox(width: 12),
+            Expanded(child: Text('AI Insight: $className')),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: _apiService.fetchClassAnalysis(classId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator(color: Colors.indigo)),
+                );
+              }
+              if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+              }
+
+              final data = snapshot.data!;
+              final insights = data['aiInsights'] ?? 'No insights generated.';
+
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Performance Summary & Strategy',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.indigo.shade100),
+                      ),
+                      child: MarkdownBody(
+                        data: insights,
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                          strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );

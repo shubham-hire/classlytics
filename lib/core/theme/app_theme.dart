@@ -9,6 +9,12 @@ class AppTheme {
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF64748B);
 
+  // Admin Specific Palette
+  static const Color adminPrimary = Color(0xFF1E293B);
+  static const Color adminAccent = Color(0xFF3B82F6);
+  static const Color adminBackground = Color(0xFFF8FAFC);
+  static const Color adminSurface = Colors.white;
+
   static ThemeData get lightTheme {
     return ThemeData(
       brightness: Brightness.light,

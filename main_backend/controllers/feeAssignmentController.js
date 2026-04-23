@@ -318,7 +318,8 @@ exports.getFeeInsights = async (req, res) => {
     const [classBreakdown] = await db.execute(`
       SELECT c.name, SUM(sfa.total_amount - sfa.paid_amount) as pending
       FROM student_fee_assignments sfa
-      INNER JOIN classes c ON sfa.class_id = c.id
+      INNER JOIN fee_structures fs ON sfa.fee_structure_id = fs.id
+      INNER JOIN classes c ON fs.class_id = c.id
       GROUP BY c.id, c.name
       ORDER BY pending DESC LIMIT 3
     `);

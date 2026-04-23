@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/api_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../admin_shell.dart';
 import 'user_filter_widget.dart';
 
 class UserListScreen extends StatefulWidget {
@@ -187,68 +188,50 @@ class _UserListScreenState extends State<UserListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('User Management', style: TextStyle(fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.go('/admin'),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_rounded),
-            tooltip: 'Add User',
-            onPressed: _showAddUserRoleDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.upload_file_rounded),
-            tooltip: 'Bulk Upload',
-            onPressed: () => context.go('/admin/users/bulk'),
-          ),
-        ],
-      ),
-      body: Column(
+    return AdminShell(
+      title: 'User Management',
+      child: Column(
         children: [
-          // ─── SEARCH ───
+          // ─── CONTROL BAR ───
           Container(
+            padding: const EdgeInsets.all(24),
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by name, email, or ID...',
-                prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                          _loadUsers();
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF1F5F9),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search by name, email, or ID...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                    ),
+                    onSubmitted: (value) {
+                      setState(() => _searchQuery = value.trim());
+                      _loadUsers();
+                    },
+                  ),
                 ),
-              ),
-              onSubmitted: (value) {
-                setState(() => _searchQuery = value.trim());
-                _loadUsers();
-              },
+                const SizedBox(width: 16),
+                _buildActionButton(Icons.person_add_rounded, 'Add User', _showAddUserRoleDialog, AppTheme.adminAccent),
+                const SizedBox(width: 12),
+                _buildActionButton(Icons.upload_file_rounded, 'Bulk Import', () => context.push('/admin/users/bulk'), Colors.blueGrey),
+              ],
             ),
           ),
 
           // ─── FILTERS ───
           Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             color: Colors.white,
             child: UserFilterWidget(
               selectedRole: _roleFilter,
@@ -267,203 +250,166 @@ class _UserListScreenState extends State<UserListScreen> {
             ),
           ),
 
-          // ─── RESULT COUNT ───
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
-            child: Row(
-              children: [
-                Text(
-                  '$_total user${_total == 1 ? '' : 's'} found',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 20),
-                  onPressed: _loadUsers,
-                  tooltip: 'Refresh',
-                ),
-              ],
-            ),
-          ),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-          // ─── USER LIST ───
+          // ─── DATA CONTENT ───
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _users.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.people_outline_rounded, size: 64, color: Colors.grey.shade300),
-                            const SizedBox(height: 12),
-                            const Text('No users found', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadUsers,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          itemCount: _users.length,
-                          itemBuilder: (context, index) {
-                            final user = _users[index] as Map<String, dynamic>;
-                            return _userCard(user);
-                          },
-                        ),
-                      ),
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth > 900) {
+                        return _buildUserTable();
+                      } else {
+                        return _buildUserList();
+                      }
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _userCard(Map<String, dynamic> user) {
-    final role = (user['role'] as String?) ?? 'Unknown';
-    final isActive = user['is_active'] == 1 || user['is_active'] == true || user['is_active'] == null;
-    final color = _roleColor(role);
-    final studentId = user['student_id'] as String?;
+  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap, Color color) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
 
+  Widget _buildUserTable() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      width: double.infinity,
+      margin: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: !isActive ? Border.all(color: Colors.red.shade200, width: 1.5) : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () async {
-            final result = await context.push('/admin/users/profile/${user['id']}');
-            if (result == true) _loadUsers();
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                // Avatar
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Center(
-                    child: Icon(_roleIcon(role), color: color, size: 24),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
+          dataRowHeight: 70,
+          columns: const [
+            DataColumn(label: Text('USER', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('ROLE', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('DEPARTMENT', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('ACTIONS', style: TextStyle(fontWeight: FontWeight.bold))),
+          ],
+          rows: _users.map((user) {
+            final role = (user['role'] as String?) ?? 'Unknown';
+            final isActive = user['is_active'] == 1 || user['is_active'] == true || user['is_active'] == null;
+            final color = _roleColor(role);
+
+            return DataRow(cells: [
+              DataCell(
+                InkWell(
+                  onTap: () => context.push('/admin/users/profile/${user['id']}'),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              user['name'] ?? 'Unknown',
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (!isActive) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text('Inactive', style: TextStyle(color: Colors.red.shade700, fontSize: 10, fontWeight: FontWeight.w700)),
-                            ),
-                          ],
-                        ],
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: color.withOpacity(0.1),
+                        child: Icon(_roleIcon(role), color: color, size: 18),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        user['email'] ?? '',
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
+                      const SizedBox(width: 12),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(role, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
-                          ),
-                          if (studentId != null) ...[
-                            const SizedBox(width: 6),
-                            Text(studentId, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                          ],
-                          if (user['dept'] != null && (user['dept'] as String).isNotEmpty) ...[
-                            const SizedBox(width: 6),
-                            Text('· ${user['dept']}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                          ],
+                          Text(user['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.adminAccent)),
+                          Text(user['email'] ?? '', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                         ],
                       ),
                     ],
                   ),
                 ),
-                // Actions
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  onSelected: (value) {
-                    if (value == 'view') {
-                      context.push('/admin/users/profile/${user['id']}').then((result) {
-                        if (result == true) _loadUsers();
-                      });
-                    } else if (value == 'edit') {
-                      context.push('/admin/users/edit/${user['id']}').then((result) {
-                        if (result == true) _loadUsers();
-                      });
-                    } else if (value == 'toggle') {
-                      _toggleStatus(user['id'], isActive);
-                    } else if (value == 'delete') {
-                      _deleteUser(user['id'], user['name'] ?? 'User');
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(value: 'view', child: Row(
-                      children: [Icon(Icons.visibility_rounded, size: 18), SizedBox(width: 8), Text('View Profile')],
-                    )),
-                    const PopupMenuItem(value: 'edit', child: Row(
-                      children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Edit')],
-                    )),
-                    PopupMenuItem(value: 'toggle', child: Row(
-                      children: [
-                        Icon(isActive ? Icons.block_rounded : Icons.check_circle_rounded, size: 18),
-                        const SizedBox(width: 8),
-                        Text(isActive ? 'Deactivate' : 'Activate'),
-                      ],
-                    )),
-                    const PopupMenuItem(value: 'delete', child: Row(
-                      children: [Icon(Icons.delete_rounded, size: 18, color: Colors.red), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))],
-                    )),
+              ),
+              DataCell(
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(role, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              DataCell(Text(user['dept'] ?? 'N/A')),
+              DataCell(
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    isActive ? 'Active' : 'Inactive',
+                    style: TextStyle(color: isActive ? Colors.green : Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              DataCell(
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.visibility_outlined, size: 20, color: Colors.blue),
+                      tooltip: 'View Profile',
+                      onPressed: () => context.push('/admin/users/profile/${user['id']}'),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      onPressed: () => context.push('/admin/users/edit/${user['id']}').then((_) => _loadUsers()),
+                    ),
+                    IconButton(
+                      icon: Icon(isActive ? Icons.block_rounded : Icons.check_circle_outline, size: 20, color: isActive ? Colors.orange : Colors.green),
+                      onPressed: () => _toggleStatus(user['id'], isActive),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      onPressed: () => _deleteUser(user['id'], user['name'] ?? 'User'),
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            ]);
+          }).toList(),
         ),
       ),
+    );
+  }
+
+  Widget _buildUserList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _users.length,
+      itemBuilder: (context, index) {
+        final user = _users[index];
+        final role = (user['role'] as String?) ?? 'Unknown';
+        final color = _roleColor(role);
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: color.withOpacity(0.1),
+              child: Icon(_roleIcon(role), color: color),
+            ),
+            title: Text(user['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('${user['role']} • ${user['dept'] ?? 'N/A'}'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/admin/users/profile/${user['id']}'),
+          ),
+        );
+      },
     );
   }
 }

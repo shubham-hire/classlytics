@@ -6,7 +6,7 @@ exports.getDashboardData = async (req, res) => {
 
   try {
     // 1. Get classes managed by this teacher
-    let classQuery = 'SELECT id FROM classes';
+    let classQuery = 'SELECT id, name, section FROM classes';
     let classParams = [];
     if (teacherId) {
       classQuery += ' WHERE teacher_id = ?';
@@ -106,7 +106,8 @@ exports.getDashboardData = async (req, res) => {
       avgMarks,
       riskStudents,
       recentSubmissions,
-      classCount: classIds.length,
+      classCount: classes.length,
+      classes: classes, // List of {id, name, section}
     });
   } catch (err) {
     console.error('[getDashboardData] Error:', err.message);

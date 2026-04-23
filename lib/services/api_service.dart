@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Use 127.0.0.1 for Web/Desktop, 10.0.2.2 for Emulator, or your local LAN IP for physical device
-  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.9:3000';
+  static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://192.168.1.9:3000';
 
   /// Exposed for screens that need to build multipart requests directly (e.g. file upload)
   static String get baseUrl => _baseUrl;
@@ -662,6 +662,91 @@ class ApiService {
 
   }
 
+  /// Send a natural language query to the Admin Command Center AI
+  Future<String> askAdminCommandCenter(String query) async {
+    final url = Uri.parse('$_baseUrl/ai/admin/command-center');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'query': query}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['answer'] as String;
+      }
+      throw Exception('Failed to get response from Admin AI');
+    } catch (e) {
+      debugPrint('ApiService Error [askAdminCommandCenter]: $e');
+      throw Exception('Error: $e');
+    }
+  }
+
+  // --- Draft Announcement via AI ---
+  Future<String> draftAdminAnnouncement(String prompt) async {
+    final url = Uri.parse('$_baseUrl/ai/admin/draft-announcement');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'prompt': prompt}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['draft'] as String;
+      }
+      throw Exception('Failed to draft announcement');
+    } catch (e) {
+      throw Exception('Failed to communicate with AI Drafter: $e');
+    }
+  }
+
+  // --- Generate AI Student Feedback ---
+  Future<Map<String, dynamic>> generateStudentFeedback(String studentId) async {
+    final url = Uri.parse('$_baseUrl/ai/admin/student-feedback');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'studentId': studentId}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to generate feedback');
+    } catch (e) {
+      throw Exception('Failed to communicate with AI Feedback Generator: $e');
+    }
+  }
+
+  // --- Phase 3: Proactive Risk Analysis ---
+  Future<Map<String, dynamic>> fetchRiskAnalysis() async {
+    final url = Uri.parse('$_baseUrl/ai/admin/risk-analysis');
+    try {
+      final response = await http.get(url).timeout(const Duration(seconds: 25));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to fetch risk analysis');
+    } catch (e) {
+      throw Exception('Error in Risk Analysis: $e');
+    }
+  }
+
+  // --- Phase 4: Teacher AI Upgrades ---
+  Future<Map<String, dynamic>> fetchClassAnalysis(String classId) async {
+    final url = Uri.parse('$_baseUrl/ai/teacher/class-analysis/$classId');
+    try {
+      final response = await http.get(url).timeout(const Duration(seconds: 25));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to fetch class analysis');
+    } catch (e) {
+      throw Exception('Error in Class Analysis: $e');
+    }
+  }
+
   // ==============================
   // COMMUNICATION
   // ==============================
@@ -723,6 +808,7 @@ class ApiService {
   }
 
   Future<List<dynamic>> fetchContacts(String userId) async {
+    if (userId.isEmpty) throw Exception('Cannot fetch contacts: User ID is empty. Please re-login.');
     final url = Uri.parse('$_baseUrl/communication/contacts/$userId');
     try {
       final response = await http.get(url);
@@ -817,7 +903,7 @@ class ApiService {
   }
 
   Future<String> fetchWeeklySummary(String studentId) async {
-    final url = Uri.parse('$_baseUrl/parent/weekly-summary/$studentId');
+    final url = Uri.parse('$_baseUrl/ai/parent/weekly-summary/$studentId');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -828,6 +914,7 @@ class ApiService {
       throw Exception('Error fetching weekly summary: $e');
     }
   }
+
   Future<List<dynamic>> fetchAnnouncements(String classId) async {
     final url = Uri.parse('$_baseUrl/communication/announcements/$classId');
     try {
@@ -1486,6 +1573,30 @@ class ApiService {
       throw Exception('Failed to fetch fee data');
     } catch (e) {
       throw Exception('Error fetching child fees: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchAdminVisualAnalytics() async {
+    final url = Uri.parse('$_baseUrl/api/admin/visual-analytics');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to fetch visual analytics');
+    } catch (e) {
+      throw Exception('Error fetching visual analytics: $e');
+    }
+  }
+
+  Future<String> fetchAdminStrategicAdvice() async {
+    final url = Uri.parse('$_baseUrl/ai/admin/strategic-advice');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['advice'] ?? 'Advice not available.';
+      }
+      throw Exception('Failed to fetch strategic advice');
+    } catch (e) {
+      throw Exception('Error fetching strategic advice: $e');
     }
   }
 }
