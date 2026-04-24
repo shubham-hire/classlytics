@@ -1,10 +1,13 @@
 const db = require('../config/db');
+const { checkStudentOwnership, checkParentOwnership } = require('../middleware/auth');
 
 // POST /communication/messages — Send a message
 exports.sendMessage = async (req, res) => {
-  const { from, to, body } = req.body;
-  if (!from || !to || !body) {
-    return res.status(400).json({ error: 'from, to, and body are required.' });
+  const { to, body } = req.body;
+  const from = req.user.id; // Enforce sender is the logged in user
+
+  if (!to || !body) {
+    return res.status(400).json({ error: 'to and body are required.' });
   }
 
   try {
@@ -24,6 +27,9 @@ exports.sendMessage = async (req, res) => {
 exports.getContacts = async (req, res) => {
   const { userId } = req.params;
   try {
+    if (req.user.id !== userId && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
     const [rows] = await db.execute(
       'SELECT id, name, role FROM users WHERE id != ? ORDER BY role DESC, name ASC',
       [userId]
@@ -39,6 +45,9 @@ exports.getContacts = async (req, res) => {
 exports.getMessages = async (req, res) => {
   const { userId } = req.params;
   try {
+    if (req.user.id !== userId && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
     const [rows] = await db.execute(
       `SELECT 
           m.id,
@@ -114,6 +123,11 @@ exports.getAnnouncements = async (req, res) => {
 exports.getStudentAnnouncements = async (req, res) => {
   const { studentId } = req.params;
   try {
+    const hasStudentAccess = await checkStudentOwnership(db, studentId, req.user);
+    const hasParentAccess = await checkParentOwnership(db, studentId, req.user);
+    if (!hasStudentAccess && !hasParentAccess) {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
     const [rows] = await db.execute(
       `SELECT a.id, a.class_id, c.name AS class_name, a.title, a.body, a.created_at
        FROM announcements a

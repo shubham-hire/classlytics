@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { checkStudentOwnership } = require('../middleware/auth');
 
 // POST /attendance — Mark attendance for a single student
 exports.markAttendance = async (req, res) => {
@@ -67,6 +68,11 @@ exports.getAttendanceByStudent = async (req, res) => {
   const { studentId } = req.params;
 
   try {
+    const hasAccess = await checkStudentOwnership(db, studentId, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: You can only view your own attendance' });
+    }
+
     const [rows] = await db.execute(
       'SELECT date, status FROM attendance WHERE student_id = ? ORDER BY date DESC',
       [studentId]

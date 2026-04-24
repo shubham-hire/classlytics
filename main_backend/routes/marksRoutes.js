@@ -1,20 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const marksController = require('../controllers/marksController');
+const db = require('../config/db');
+const { verifyToken, requireRole, verifyOwnership } = require('../middleware/auth');
 
-// POST /marks/batch — Add marks for multiple students
-router.post('/batch', marksController.addBatchMarks);
+router.use(verifyToken);
 
-// POST /marks — Add marks for a student
-router.post('/', marksController.addMarks);
+// Adding/Batching marks is restricted to staff
+router.post('/batch', requireRole('Teacher', 'Admin'), marksController.addBatchMarks);
+router.post('/', requireRole('Teacher', 'Admin'), marksController.addMarks);
 
-// GET /marks/:studentId/quiz-results — Quiz results grouped by subject
-router.get('/:studentId/quiz-results', marksController.getQuizResults);
-
-// GET /marks/:studentId/subject/:subject — Marks for a specific subject
-router.get('/:studentId/subject/:subject', marksController.getMarksBySubject);
-
-// GET /marks/:studentId — Full marks history
-router.get('/:studentId', marksController.getMarksByStudent);
+// Viewing marks history is accessible to staff OR the student themselves OR their parent
+router.get('/:studentId/quiz-results', verifyOwnership(db), marksController.getQuizResults);
+router.get('/:studentId/subject/:subject', verifyOwnership(db), marksController.getMarksBySubject);
+router.get('/:studentId', verifyOwnership(db), marksController.getMarksByStudent);
 
 module.exports = router;

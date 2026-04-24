@@ -141,9 +141,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         ]);
       }
       return Column(children: [
-        _buildLeftColumn(),
+        Expanded(child: _buildLeftColumn()),
         const SizedBox(height: 20),
-        _buildRightColumn(),
+        Expanded(child: _buildRightColumn()),
       ]);
     });
   }

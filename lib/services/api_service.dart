@@ -9,6 +9,21 @@ class ApiService {
   /// Exposed for screens that need to build multipart requests directly (e.g. file upload)
   static String get baseUrl => _baseUrl;
 
+  // ── JWT Token Storage ──────────────────────────────────────
+  static String? _authToken;
+
+  /// Store JWT after login
+  static void setAuthToken(String token) => _authToken = token;
+
+  /// Clear JWT on logout
+  static void clearAuthToken() => _authToken = null;
+
+  /// Returns headers with Authorization for protected routes
+  Map<String, String> get _authHeaders => {
+    'Content-Type': 'application/json',
+    if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+  };
+
 
   // ==============================
   // AUTH
@@ -23,7 +38,12 @@ class ApiService {
         body: jsonEncode({'email': email, 'password': password}),
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        // Store JWT for subsequent protected requests
+        if (data['token'] != null) {
+          setAuthToken(data['token'] as String);
+        }
+        return data;
       } else {
         throw Exception(jsonDecode(response.body)['error'] ?? 'Login failed');
       }
@@ -40,7 +60,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchDashboardData({String? teacherId}) async {
     final uri = Uri.parse('$_baseUrl/teacher/dashboard${teacherId != null ? '?teacherId=$teacherId' : ''}');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -56,7 +76,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchProfile({String? teacherId}) async {
     final uri = Uri.parse('$_baseUrl/teacher/profile${teacherId != null ? '?teacherId=$teacherId' : ''}');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -71,7 +91,7 @@ class ApiService {
   Future<List<dynamic>> fetchClassStats({String? teacherId}) async {
     final uri = Uri.parse('$_baseUrl/teacher/class-stats${teacherId != null ? '?teacherId=$teacherId' : ''}');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to load class stats');
     } catch (e) {
@@ -86,7 +106,7 @@ class ApiService {
   Future<List<dynamic>> fetchClasses() async {
     final url = Uri.parse('$_baseUrl/teacher/classes');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -105,7 +125,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'classId': classId, 'studentIds': studentIds}),
       );
       if (response.statusCode != 201) throw Exception('Enrollment failed');
@@ -121,7 +141,7 @@ class ApiService {
   Future<List<dynamic>> fetchStudents(String classId) async {
     final url = Uri.parse('$_baseUrl/class/$classId/students');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -138,7 +158,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'name': name, 'email': email, 'classId': classId, 'rollNo': rollNo}),
       );
       if (response.statusCode != 201) throw Exception('Failed to add student');
@@ -165,7 +185,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'name': name, 'email': email, 'phone': phone,
           'address': address, 'country': country, 'state': state,
@@ -204,7 +224,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'studentName': studentName,
           'studentEmail': studentEmail,
@@ -237,7 +257,7 @@ class ApiService {
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'name': name, 'rollNo': rollNo, 'classId': classId}),
       );
       if (response.statusCode != 200) throw Exception('Failed to update student');
@@ -251,7 +271,7 @@ class ApiService {
     if (dept != null) query += 'dept=$dept&';
     if (year != null) query += 'year=$year';
     try {
-      final response = await http.get(Uri.parse(query));
+      final response = await http.get(Uri.parse(query), headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch global student list');
     } catch (e) {
@@ -268,7 +288,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'studentId': studentId,
           'status': status,
@@ -290,7 +310,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'records': records}),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -303,7 +323,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchAttendance(String studentId) async {
     final url = Uri.parse('$_baseUrl/attendance/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -319,7 +339,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchClassAttendanceSummary(String classId, {String? date}) async {
     final uri = Uri.parse('$_baseUrl/attendance/class/$classId${date != null ? '?date=$date' : ''}');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch class attendance');
     } catch (e) {
@@ -336,7 +356,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'studentId': studentId,
           'subject': subject,
@@ -356,7 +376,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchMarks(String studentId) async {
     final url = Uri.parse('$_baseUrl/marks/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -372,7 +392,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchQuizResults(String studentId) async {
     final url = Uri.parse('$_baseUrl/marks/$studentId/quiz-results');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch quiz results');
     } catch (e) {
@@ -386,7 +406,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'records': records}),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -403,7 +423,7 @@ class ApiService {
   Future<void> deleteAssignment(String id) async {
     final url = Uri.parse('$_baseUrl/assignments/$id');
     try {
-      final response = await http.delete(url);
+      final response = await http.delete(url, headers: _authHeaders);
       if (response.statusCode != 200) {
         throw Exception('Failed to delete assignment');
       }
@@ -417,7 +437,7 @@ class ApiService {
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'title': title,
           'description': description,
@@ -438,7 +458,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'classId': classId,
           'title': title,
@@ -459,7 +479,7 @@ class ApiService {
   Future<List<dynamic>> fetchAssignments(String classId) async {
     final url = Uri.parse('$_baseUrl/assignments/$classId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['assignments'] as List<dynamic>;
@@ -475,7 +495,7 @@ class ApiService {
   Future<List<dynamic>> fetchStudentAssignments(String studentId) async {
     final url = Uri.parse('$_baseUrl/assignments/student/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['assignments'] as List<dynamic>;
@@ -493,7 +513,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'studentId': studentId, 'note': note ?? ''}),
       );
       if (response.statusCode != 201) throw Exception(jsonDecode(response.body)['error'] ?? 'Submission failed');
@@ -506,7 +526,7 @@ class ApiService {
   Future<List<dynamic>> fetchSubmissions(String assignmentId) async {
     final url = Uri.parse('$_baseUrl/assignments/$assignmentId/submissions');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return (jsonDecode(response.body)['submissions'] as List<dynamic>);
       throw Exception('Failed to fetch submissions');
     } catch (e) {
@@ -522,7 +542,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchFeeStatus(String studentId) async {
     final url = Uri.parse('$_baseUrl/fee/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch fee status');
     } catch (e) {
@@ -539,7 +559,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'type': type, 'remark': remark}),
       );
       if (response.statusCode != 201) {
@@ -553,7 +573,7 @@ class ApiService {
   Future<List<dynamic>> fetchBehaviorLogs(String studentId) async {
     final url = Uri.parse('$_baseUrl/student/$studentId/behavior');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['behaviorLogs'] as List<dynamic>;
@@ -572,7 +592,7 @@ class ApiService {
   Future<List<dynamic>> fetchInsights(String studentId) async {
     final url = Uri.parse('$_baseUrl/ai/$studentId/insights');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['insights'] as List<dynamic>;
@@ -588,7 +608,7 @@ class ApiService {
   Future<String> fetchRisk(String studentId) async {
     final url = Uri.parse('$_baseUrl/ai/$studentId/risk');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['risk'] as String;
@@ -604,7 +624,7 @@ class ApiService {
   Future<List<dynamic>> fetchSuggestions(String studentId) async {
     final url = Uri.parse('$_baseUrl/ai/$studentId/suggestions');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['suggestions'] as List<dynamic>;
@@ -620,7 +640,7 @@ class ApiService {
   Future<List<dynamic>> fetchNotifications(String studentId) async {
     final url = Uri.parse('$_baseUrl/ai/$studentId/notifications');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         return (jsonDecode(response.body)['notifications'] as List<dynamic>);
       }
@@ -633,7 +653,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchStudyPlan(String studentId) async {
     final url = Uri.parse('$_baseUrl/ai/$studentId/study-plan');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch study plan');
     } catch (e) {
@@ -648,7 +668,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'query': query,
           if (studentId != null) 'studentId': studentId,
@@ -668,7 +688,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'query': query}),
       );
       if (response.statusCode == 200) {
@@ -687,7 +707,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'prompt': prompt}),
       ).timeout(const Duration(seconds: 15));
 
@@ -706,7 +726,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'studentId': studentId}),
       ).timeout(const Duration(seconds: 15));
 
@@ -723,7 +743,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchRiskAnalysis() async {
     final url = Uri.parse('$_baseUrl/ai/admin/risk-analysis');
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 25));
+      final response = await http.get(url, headers: _authHeaders).timeout(const Duration(seconds: 25));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -737,7 +757,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchClassAnalysis(String classId) async {
     final url = Uri.parse('$_baseUrl/ai/teacher/class-analysis/$classId');
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 25));
+      final response = await http.get(url, headers: _authHeaders).timeout(const Duration(seconds: 25));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -751,13 +771,13 @@ class ApiService {
   // COMMUNICATION
   // ==============================
 
-  Future<void> sendMessage(String from, String to, String body) async {
+  Future<void> sendMessage(String to, String body) async {
     final url = Uri.parse('$_baseUrl/communication/messages');
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'from': from, 'to': to, 'body': body}),
+        headers: _authHeaders,
+        body: jsonEncode({'to': to, 'body': body}),
       );
       if (response.statusCode != 201) throw Exception('Message send failed');
     } catch (e) {
@@ -781,7 +801,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'from': from,
           'to': to,
@@ -799,7 +819,7 @@ class ApiService {
   Future<List<dynamic>> fetchMessages(String userId) async {
     final url = Uri.parse('$_baseUrl/communication/messages/$userId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return (jsonDecode(response.body)['messages'] as List<dynamic>);
       throw Exception('Failed to fetch messages');
     } catch (e) {
@@ -811,7 +831,7 @@ class ApiService {
     if (userId.isEmpty) throw Exception('Cannot fetch contacts: User ID is empty. Please re-login.');
     final url = Uri.parse('$_baseUrl/communication/contacts/$userId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return (jsonDecode(response.body)['contacts'] as List<dynamic>);
       throw Exception('Failed to fetch contacts');
     } catch (e) {
@@ -848,7 +868,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'userId': userId,
           'studentId': studentId,
@@ -866,7 +886,7 @@ class ApiService {
   Future<List<dynamic>> getLeaveRequests(String studentId) async {
     final url = Uri.parse('$_baseUrl/parent/leave-requests/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return (jsonDecode(response.body)['requests'] as List<dynamic>);
       throw Exception('Failed to fetch leave requests');
     } catch (e) {
@@ -879,7 +899,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'studentId': studentId}),
       );
       if (response.statusCode == 200) {
@@ -894,7 +914,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchChildInfo(String parentId) async {
     final url = Uri.parse('$_baseUrl/parent/child-info/$parentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
       throw Exception('Failed to fetch child info');
     } catch (e) {
@@ -905,7 +925,7 @@ class ApiService {
   Future<String> fetchWeeklySummary(String studentId) async {
     final url = Uri.parse('$_baseUrl/ai/parent/weekly-summary/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body)['summary'] ?? 'Summary not available.';
       }
@@ -918,7 +938,7 @@ class ApiService {
   Future<List<dynamic>> fetchAnnouncements(String classId) async {
     final url = Uri.parse('$_baseUrl/communication/announcements/$classId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return (jsonDecode(response.body)['announcements'] as List<dynamic>);
       throw Exception('Failed to fetch announcements');
     } catch (e) {
@@ -930,7 +950,7 @@ class ApiService {
   Future<List<dynamic>> fetchStudentAnnouncements(String studentId) async {
     final url = Uri.parse('$_baseUrl/communication/announcements/student/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return (jsonDecode(response.body)['announcements'] as List<dynamic>);
       throw Exception('Failed to fetch student announcements');
     } catch (e) {
@@ -971,7 +991,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'classId': classId,
           'teacherId': teacherId,
@@ -992,7 +1012,7 @@ class ApiService {
   Future<List<dynamic>> fetchStudentQuizzes(String studentId) async {
     final url = Uri.parse('$_baseUrl/quizzes/student/$studentId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body)['quizzes'] as List;
       throw Exception('Failed to fetch quizzes');
     } catch (e) {
@@ -1004,7 +1024,7 @@ class ApiService {
   Future<List<dynamic>> fetchQuizzesByClass(String classId) async {
     final url = Uri.parse('$_baseUrl/quizzes/class/$classId');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body)['quizzes'] as List;
       throw Exception('Failed to fetch class quizzes');
     } catch (e) {
@@ -1016,7 +1036,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchQuizQuestions(String quizId, {String role = 'student'}) async {
     final url = Uri.parse('$_baseUrl/quizzes/$quizId/questions?role=$role');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch questions');
     } catch (e) {
@@ -1035,7 +1055,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'studentId': studentId,
           'answers': answers,
@@ -1060,7 +1080,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'query': query,
           if (studentId != null) 'studentId': studentId,
@@ -1086,7 +1106,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'query': query,
           'teacherId': teacherId,
@@ -1109,8 +1129,11 @@ class ApiService {
   Future<Map<String, dynamic>> fetchAdminStats() async {
     final url = Uri.parse('$_baseUrl/api/admin/stats');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw Exception('Unauthorized: Please log in as Admin.');
+      }
       throw Exception('Failed to fetch admin stats');
     } catch (e) {
       throw Exception('Error fetching admin stats: $e');
@@ -1137,7 +1160,7 @@ class ApiService {
 
     final uri = Uri.parse('$_baseUrl/api/admin/users').replace(queryParameters: params);
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch users');
     } catch (e) {
@@ -1149,7 +1172,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchAdminUserById(String id) async {
     final url = Uri.parse('$_baseUrl/api/admin/users/$id');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('User not found');
     } catch (e) {
@@ -1163,7 +1186,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode(data),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -1180,7 +1203,7 @@ class ApiService {
     try {
       final response = await http.put(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode(data),
       );
       if (response.statusCode != 200) {
@@ -1196,7 +1219,7 @@ class ApiService {
   Future<void> deleteAdminUser(String id) async {
     final url = Uri.parse('$_baseUrl/api/admin/users/$id');
     try {
-      final response = await http.delete(url);
+      final response = await http.delete(url, headers: _authHeaders);
       if (response.statusCode != 200) throw Exception('Failed to delete user');
     } catch (e) {
       throw Exception('Error deleting user: $e');
@@ -1209,7 +1232,7 @@ class ApiService {
     try {
       final response = await http.patch(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'isActive': isActive}),
       );
       if (response.statusCode != 200) throw Exception('Failed to update user status');
@@ -1224,7 +1247,7 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'users': users}),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -1238,7 +1261,7 @@ class ApiService {
   Future<List<dynamic>> fetchAdminClasses() async {
     final url = Uri.parse('$_baseUrl/api/admin/classes');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch classes');
     } catch (e) {
@@ -1250,7 +1273,7 @@ class ApiService {
   Future<List<dynamic>> fetchAdminStudentsList() async {
     final url = Uri.parse('$_baseUrl/api/admin/students/list');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch students list');
     } catch (e) {
@@ -1268,7 +1291,7 @@ class ApiService {
     if (academicYear != null && academicYear.isNotEmpty) params['academic_year'] = academicYear;
     final uri = Uri.parse('$_baseUrl/api/fees/structure').replace(queryParameters: params.isEmpty ? null : params);
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch fee structures');
     } catch (e) {
@@ -1279,7 +1302,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchFeeStructureById(int id) async {
     final uri = Uri.parse('$_baseUrl/api/fees/structure/$id');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Fee structure not found');
     } catch (e) {
@@ -1292,7 +1315,7 @@ class ApiService {
     try {
       final response = await http.post(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode(data),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -1308,7 +1331,7 @@ class ApiService {
     try {
       final response = await http.put(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode(data),
       );
       if (response.statusCode == 200) return jsonDecode(response.body);
@@ -1322,7 +1345,7 @@ class ApiService {
   Future<void> deleteFeeStructure(int id) async {
     final uri = Uri.parse('$_baseUrl/api/fees/structure/$id');
     try {
-      final response = await http.delete(uri);
+      final response = await http.delete(uri, headers: _authHeaders);
       if (response.statusCode != 200) {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Failed to delete fee structure');
@@ -1343,7 +1366,7 @@ class ApiService {
     if (studentId != null && studentId.isNotEmpty) params['student_id'] = studentId;
     final uri = Uri.parse('$_baseUrl/api/fees/assignments').replace(queryParameters: params.isEmpty ? null : params);
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch fee assignments');
     } catch (e) {
@@ -1354,7 +1377,7 @@ class ApiService {
   Future<List<dynamic>> fetchStudentFeeAssignments(String studentId) async {
     final uri = Uri.parse('$_baseUrl/api/fees/assignments/student/$studentId');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch student fee assignments');
     } catch (e) {
@@ -1367,7 +1390,7 @@ class ApiService {
     try {
       final response = await http.post(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'student_id': studentId, 'fee_structure_id': feeStructureId}),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -1383,7 +1406,7 @@ class ApiService {
     try {
       final response = await http.post(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({'fee_structure_id': feeStructureId}),
       );
       if (response.statusCode == 201) return jsonDecode(response.body);
@@ -1397,7 +1420,7 @@ class ApiService {
   Future<void> removeFeeAssignment(int assignmentId) async {
     final uri = Uri.parse('$_baseUrl/api/fees/assignments/$assignmentId');
     try {
-      final response = await http.delete(uri);
+      final response = await http.delete(uri, headers: _authHeaders);
       if (response.statusCode != 200) {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Failed to remove assignment');
@@ -1410,7 +1433,7 @@ class ApiService {
   Future<List<dynamic>> fetchPaymentHistory(int assignmentId) async {
     final uri = Uri.parse('$_baseUrl/api/fees/assignments/$assignmentId/payments');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch payment history');
     } catch (e) {
@@ -1423,7 +1446,7 @@ class ApiService {
     try {
       final response = await http.post(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: _authHeaders,
         body: jsonEncode({
           'amount': amount,
           'payment_mode': mode,
@@ -1442,7 +1465,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchFeeReports() async {
     final uri = Uri.parse('$_baseUrl/api/fees/reports');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch fee reports');
     } catch (e) {
@@ -1453,7 +1476,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchFeeInsights() async {
     final uri = Uri.parse('$_baseUrl/api/fees/insights');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch AI insights');
     } catch (e) {
@@ -1500,7 +1523,7 @@ class ApiService {
   Future<List<dynamic>> fetchTeachers() async {
     final uri = Uri.parse('$_baseUrl/api/admin/teachers');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch teachers');
     } catch (e) {
@@ -1511,7 +1534,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchTeacherById(String id) async {
     final uri = Uri.parse('$_baseUrl/api/admin/teachers/$id');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch teacher');
     } catch (e) {
@@ -1551,7 +1574,7 @@ class ApiService {
   Future<void> deleteTeacher(String id) async {
     final uri = Uri.parse('$_baseUrl/api/admin/teachers/$id');
     try {
-      final response = await http.delete(uri);
+      final response = await http.delete(uri, headers: _authHeaders);
       if (response.statusCode != 200 && response.statusCode != 204) {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Failed to delete teacher');
@@ -1568,7 +1591,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchChildFees(String studentId) async {
     final uri = Uri.parse('$_baseUrl/parent/fees/$studentId');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body);
       throw Exception('Failed to fetch fee data');
     } catch (e) {
@@ -1579,7 +1602,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchAdminVisualAnalytics() async {
     final url = Uri.parse('$_baseUrl/api/admin/visual-analytics');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
       throw Exception('Failed to fetch visual analytics');
     } catch (e) {
@@ -1590,7 +1613,7 @@ class ApiService {
   Future<String> fetchAdminStrategicAdvice() async {
     final url = Uri.parse('$_baseUrl/ai/admin/strategic-advice');
     try {
-      final response = await http.get(url);
+      final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body)['advice'] ?? 'Advice not available.';
       }

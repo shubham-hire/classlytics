@@ -78,7 +78,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Classlytics', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: Row(
+          children: [
+            Image.asset('assets/images/logo.png', height: 28),
+            const SizedBox(width: 10),
+            const Text('Classlytics', style: TextStyle(fontWeight: FontWeight.w700)),
+          ],
+        ),
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.textPrimary,
         elevation: 0,

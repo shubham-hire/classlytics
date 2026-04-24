@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:classlytics/core/theme/app_theme.dart';
 import 'package:classlytics/features/dashboard/presentation/dashboard_screen.dart';
 import '../../../services/api_service.dart';
@@ -16,7 +17,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final ApiService _apiService = ApiService();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscureText = true;
 
   late AnimationController _animController;
@@ -30,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animController, curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
     );
@@ -98,13 +101,42 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      final account = await _googleSignIn.signIn();
+      if (account == null) return; // User cancelled
+
+      // TODO: Send account.idToken to your backend for verification and role assignment
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Signed in as ${account.displayName}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView( // ✅ ONLY ONE SCROLL (FIXED)
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -114,25 +146,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    
+                    const SizedBox(height: 40),
+
                     // Logo
                     Center(
                       child: Container(
-                        height: 80,
-                        width: 80,
+                        height: 100,
+                        width: 100,
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(24),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primaryColor.withOpacity(0.3),
-                              blurRadius: 24,
-                              offset: const Offset(0, 12),
+                              color: AppTheme.primaryColor.withOpacity(0.15),
+                              blurRadius: 30,
+                              offset: const Offset(0, 10),
                             )
                           ],
                         ),
-                        child: const Center(
-                          child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 40),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
@@ -149,12 +186,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       ),
                     ),
 
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Sign in to continue',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+
                     const SizedBox(height: 48),
 
                     // Email
                     TextField(
                       controller: _emailController,
-                      decoration: const InputDecoration(hintText: 'Email Address'),
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        hintText: 'Email Address',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
                     ),
 
                     const SizedBox(height: 16),
@@ -165,8 +217,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       obscureText: _obscureText,
                       decoration: InputDecoration(
                         hintText: 'Password',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility),
+                          icon: Icon(_obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined),
                           onPressed: () => setState(() => _obscureText = !_obscureText),
                         ),
                       ),
@@ -174,44 +227,75 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                     const SizedBox(height: 32),
 
-                    // Sign In
+                    // Sign In Button
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
                       child: _isLoading
-                          ? const CircularProgressIndicator()
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
                           : const Text('Sign In'),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
 
-                    // Admin Dashboard Demo
-                    OutlinedButton.icon(
-                      onPressed: () => context.go('/admin'),
-                      icon: const Icon(Icons.admin_panel_settings_rounded, size: 18),
-                      label: const Text('Admin Dashboard'),
+                    // Divider
+                    Row(
+                      children: [
+                        const Expanded(child: Divider(thickness: 1)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or continue with',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider(thickness: 1)),
+                      ],
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // Google Sign-In Button
+                    OutlinedButton(
+                      onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF8B5CF6),
-                        side: const BorderSide(color: Color(0xFF8B5CF6)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey.shade300),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppTheme.textPrimary,
                       ),
+                      child: _isGoogleLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/images/google_logo.png',
+                                  height: 20,
+                                  width: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Continue with Google',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                                ),
+                              ],
+                            ),
                     ),
 
-                    const SizedBox(height: 12),
-
-                    // Teacher Demo
-                    OutlinedButton(
-                      onPressed: () => context.go('/teacher-dashboard'),
-                      child: const Text('Teacher Dashboard Demo'),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Parent Demo
-                    OutlinedButton(
-                      onPressed: () => context.go('/dashboard', extra: UserRole.parent),
-                      child: const Text('Parent Dashboard Demo'),
-                    ),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),

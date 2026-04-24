@@ -2,7 +2,8 @@ const db = require('../config/db');
 
 // GET /teacher/dashboard?teacherId=<id>
 exports.getDashboardData = async (req, res) => {
-  const { teacherId } = req.query;
+  // Prefer id from JWT, fallback to query param
+  const teacherId = req.user.id || req.query.teacherId;
 
   try {
     // 1. Get classes managed by this teacher
@@ -127,7 +128,7 @@ exports.getSchedule = (req, res) => {
 
 // GET /teacher/profile?teacherId=<id>
 exports.getProfile = async (req, res) => {
-  const { teacherId } = req.query;
+  const teacherId = req.user.id || req.query.teacherId;
 
   if (!teacherId) {
     // Fallback static profile if no teacherId provided
@@ -172,7 +173,7 @@ exports.getProfile = async (req, res) => {
 
 // GET /teacher/classes/stats?teacherId=<id>  — per-class stats
 exports.getClassStats = async (req, res) => {
-  const { teacherId } = req.query;
+  const teacherId = req.user.id || req.query.teacherId;
   try {
     let query = `
       SELECT 

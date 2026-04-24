@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const teacherRoutes = require('./routes/teacherRoutes');
 const classRoutes = require('./routes/classRoutes');
 const studentRoutes = require('./routes/studentRoutes');
@@ -22,6 +24,27 @@ const path = require('path');
 
 const app = express();
 const PORT = 3000;
+
+// Security Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow Flutter Web to load assets
+}));
+
+// Global Rate Limiter
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Limit each IP to 1000 requests per window
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+app.use(globalLimiter);
+
+// Specific limiter for login to prevent brute force
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 login attempts per window
+  message: { error: 'Too many login attempts, please try again after 15 minutes' }
+});
+app.use('/auth/login', loginLimiter);
 
 // Middleware
 app.use(express.json({ limit: '20mb' }));
@@ -69,19 +92,23 @@ app.get('/', (req, res) => {
   res.send('Classlytics API is running...');
 });
 
-app.listen(PORT, '0.0.0.0', async () => {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-  let lanIp = 'unknown';
-  for (const iface of Object.values(nets)) {
-    for (const net of iface) {
-      if (net.family === 'IPv4' && !net.internal) { lanIp = net.address; break; }
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', async () => {
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    let lanIp = 'unknown';
+    for (const iface of Object.values(nets)) {
+      for (const net of iface) {
+        if (net.family === 'IPv4' && !net.internal) { lanIp = net.address; break; }
+      }
+      if (lanIp !== 'unknown') break;
     }
-    if (lanIp !== 'unknown') break;
-  }
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Also accessible on local network at http://${lanIp}:${PORT}`);
-  // Initialize Database
-  await initDb();
-});
+    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Also accessible on local network at http://${lanIp}:${PORT}`);
+    // Initialize Database
+    await initDb();
+  });
+}
+
+module.exports = app;
 
