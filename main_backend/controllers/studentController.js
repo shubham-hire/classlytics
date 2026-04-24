@@ -95,31 +95,7 @@ exports.addStudent = async (req, res) => {
 
     console.log(`[AUTH] New Student Registered: ${email} | Temp Password: ${randomPassword}`);
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false, 
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
-
-    const mailOptions = {
-      from: '"Classlytics Admin" <' + process.env.SMTP_USER + '>',
-      to: email,
-      subject: 'Welcome to Classlytics - Your Permanent Student ID',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
-          <h2 style="color: #1E3A8A;">Account Created!</h2>
-          <p>Your permanent Student ID is: <strong>${studentId}</strong></p>
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-            <p><strong>Login ID (Email):</strong> ${email}</p>
-            <p><strong>Temporary Password:</strong> ${randomPassword}</p>
-          </div>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions).catch(e => console.warn('Email failed but user created:', e.message));
-
+    // Respond immediately — do not block on email
     res.status(201).json({ 
       message: 'Student registered successfully', 
       studentId, 
@@ -127,6 +103,34 @@ exports.addStudent = async (req, res) => {
       classId: classId || null,
       rollNo: classRollNo || studentRollNo,
     });
+
+    // Fire-and-forget email (skip in test environment to avoid open handles)
+    if (process.env.NODE_ENV !== 'test') {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: false,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      });
+      const mailOptions = {
+        from: '"Classlytics Admin" <' + process.env.SMTP_USER + '>',
+        to: email,
+        subject: 'Welcome to Classlytics - Your Permanent Student ID',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+            <h2 style="color: #1E3A8A;">Account Created!</h2>
+            <p>Your permanent Student ID is: <strong>${studentId}</strong></p>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+              <p><strong>Login ID (Email):</strong> ${email}</p>
+              <p><strong>Temporary Password:</strong> ${randomPassword}</p>
+            </div>
+          </div>
+        `,
+      };
+      transporter.sendMail(mailOptions)
+        .then(() => transporter.close())
+        .catch(e => { console.warn('Email failed but user created:', e.message); transporter.close(); });
+    }
   } catch (err) {
     if (connection) {
       await connection.rollback();
@@ -350,45 +354,15 @@ exports.createWithParent = async (req, res) => {
     const classRollNo = await enrollStudentInClass(connection, classId, studentId, studentRollNo);
 
     await connection.commit();
+    connection.release();
+    connection = null;
 
     // Log fallback for debugging when Email fails
     console.log(`\n[AUTH] NEW REGISTRATION (WITH PARENT) SUCCESSFUL:`);
     console.log(`[AUTH] Student: ID=${studentId} | Email=${studentEmail || 'None'} | Temp Pass=${studentPass}`);
     console.log(`[AUTH] Parent: Email=${parentEmail} | Temp Pass=${randomPassword}\n`);
 
-    // 7. Send Email using Nodemailer
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-    });
-
-    const mailOptions = {
-      from: '"Classlytics Admin" <' + process.env.SMTP_USER + '>',
-      to: parentEmail,
-      subject: 'Welcome to Classlytics – Parent Account Created',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Dear ${parentName},</h2>
-          <p>Your parent account has been created in Classlytics.</p>
-          <p><strong>Student:</strong> ${studentName}</p>
-          <h3>Login Credentials:</h3>
-          <div style="background: #f4f4f5; padding: 10px; border-radius: 5px;">
-            <p><strong>Email:</strong> ${parentEmail}</p>
-            <p><strong>Password:</strong> ${randomPassword}</p>
-          </div>
-          <p>Login here: <a href="http://localhost:3000/login">http://localhost:3000/login</a></p>
-          <p>Please change your password after first login.</p>
-          <br/>
-          <p>Regards,<br/>Classlytics Team</p>
-        </div>
-      `
-    };
-
-    transporter.sendMail(mailOptions).catch(e => console.warn('Email warning:', e.message));
-
-    connection.release();
+    // Respond immediately — do not block on email
     res.status(201).json({
       message: 'Student and parent created successfully',
       studentId,
@@ -396,6 +370,40 @@ exports.createWithParent = async (req, res) => {
       classId: classId || null,
       rollNo: classRollNo || studentRollNo,
     });
+
+    // Fire-and-forget email (skip in test environment to avoid open handles)
+    if (process.env.NODE_ENV !== 'test') {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: false,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      });
+      const mailOptions = {
+        from: '"Classlytics Admin" <' + process.env.SMTP_USER + '>',
+        to: parentEmail,
+        subject: 'Welcome to Classlytics – Parent Account Created',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Dear ${parentName},</h2>
+            <p>Your parent account has been created in Classlytics.</p>
+            <p><strong>Student:</strong> ${studentName}</p>
+            <h3>Login Credentials:</h3>
+            <div style="background: #f4f4f5; padding: 10px; border-radius: 5px;">
+              <p><strong>Email:</strong> ${parentEmail}</p>
+              <p><strong>Password:</strong> ${randomPassword}</p>
+            </div>
+            <p>Login here: <a href="http://localhost:3000/login">http://localhost:3000/login</a></p>
+            <p>Please change your password after first login.</p>
+            <br/>
+            <p>Regards,<br/>Classlytics Team</p>
+          </div>
+        `
+      };
+      transporter.sendMail(mailOptions)
+        .then(() => transporter.close())
+        .catch(e => { console.warn('Email warning:', e.message); transporter.close(); });
+    }
   } catch (err) {
     if (connection) {
       await connection.rollback();
