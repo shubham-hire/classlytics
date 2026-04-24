@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const quizController = require('../controllers/quizController');
+const { verifyToken } = require('../middleware/auth');
+
+router.use(verifyToken);
 
 // Teacher
 router.post('/', quizController.createQuiz);

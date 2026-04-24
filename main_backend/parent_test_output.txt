@@ -1,0 +1,119 @@
+  console.log
+    ◇ injected env (17) from .env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+  console.log
+    [REQUEST] POST /auth/login from unknown
+
+      at log (app.js:58:11)
+
+  console.log
+    [AUTH] Login attempt for: parent@test.com
+
+      at log (controllers/authController.js:13:17)
+
+  console.log
+    [AUTH] Login success for: parent@test.com (Parent)
+
+      at log (controllers/authController.js:88:17)
+
+  console.log
+    [REQUEST] POST /auth/login from unknown
+
+      at log (app.js:58:11)
+
+  console.log
+    [AUTH] Login attempt for: teacher@test.com
+
+      at log (controllers/authController.js:13:17)
+
+  console.log
+    [AUTH] Login success for: teacher@test.com (Teacher)
+
+      at log (controllers/authController.js:88:17)
+
+  console.log
+    [REQUEST] GET /parent/child-info/uid-parent-001 from unknown
+
+      at log (app.js:58:11)
+
+  console.log
+    [REQUEST] GET /parent/child-info/uid-parent-001 from unknown
+
+      at log (app.js:58:11)
+
+  console.log
+    [REQUEST] GET /parent/weekly-summary/STU001 from unknown
+
+      at log (app.js:58:11)
+
+  console.log
+    [REQUEST] GET /parent/weekly-summary/STU002 from unknown
+
+      at log (app.js:58:11)
+
+  console.log
+    [REQUEST] POST /parent/leave-request from unknown
+
+      at log (app.js:58:11)
+
+  console.log
+    [REQUEST] POST /parent/leave-request from unknown
+
+      at log (app.js:58:11)
+
+(node:39318) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL test/parent.test.js (5.85 s)
+  Parent API Endpoints
+    GET /parent/child-info/:userId
+      ✓ should allow parent to view their child info (17 ms)
+      ✓ should allow teacher to view any child info (12 ms)
+    GET /parent/weekly-summary/:studentId
+      ✕ should allow parent to view their own child summary (5004 ms)
+      ✓ should block parent from viewing others child summary (63 ms)
+    POST /parent/leave-request
+      ✓ should allow parent to submit leave request for their child (41 ms)
+      ✓ should block parent from submitting leave for others child (11 ms)
+
+  ● Parent API Endpoints › GET /parent/weekly-summary/:studentId › should allow parent to view their own child summary
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      42 |
+      43 |   describe('GET /parent/weekly-summary/:studentId', () => {
+    > 44 |     it('should allow parent to view their own child summary', async () => {
+         |     ^
+      45 |       const res = await request(app)
+      46 |         .get('/parent/weekly-summary/STU001')
+      47 |         .set('Authorization', `Bearer ${parentToken}`);
+
+      at it (test/parent.test.js:44:5)
+      at describe (test/parent.test.js:43:3)
+      at Object.describe (test/parent.test.js:10:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 passed, 6 total
+Snapshots:   0 total
+Time:        5.923 s, estimated 6 s
+Ran all test suites matching test/parent.test.js.
+
+Jest has detected the following 1 open handle potentially keeping Jest from exiting:
+
+  ●  TCPSERVERWRAP
+
+      44 |     it('should allow parent to view their own child summary', async () => {
+      45 |       const res = await request(app)
+    > 46 |         .get('/parent/weekly-summary/STU001')
+         |          ^
+      47 |         .set('Authorization', `Bearer ${parentToken}`);
+      48 |       
+      49 |       expect(res.statusCode).toEqual(200);
+
+      at Test.serverAddress (node_modules/supertest/lib/test.js:63:35)
+      at new Test (node_modules/supertest/lib/test.js:49:14)
+      at Object.obj.<computed> [as get] (node_modules/supertest/index.js:40:18)
+      at Object.get (test/parent.test.js:46:10)
+

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { checkStudentOwnership, checkParentOwnership } = require('../middleware/auth');
 
 // ─── Helper: Recalculate status ────────────────────────────────────────────────
 function calcStatus(paidAmount, totalAmount) {
@@ -52,6 +53,11 @@ exports.getAssignments = async (req, res) => {
 exports.getStudentAssignments = async (req, res) => {
   const { studentId } = req.params;
   try {
+    const hasStudentAccess = await checkStudentOwnership(db, studentId, req.user);
+    const hasParentAccess = await checkParentOwnership(db, studentId, req.user);
+    if (!hasStudentAccess && !hasParentAccess) {
+      return res.status(403).json({ error: 'Access denied: You can only view your own fee assignments.' });
+    }
     const [rows] = await db.execute(`
       SELECT 
         sfa.id, sfa.student_id, sfa.fee_structure_id,

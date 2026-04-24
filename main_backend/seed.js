@@ -62,6 +62,8 @@ const randBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + 
 
 // ─── Static IDs (predictable, easy to remember) ──────────────
 const IDs = {
+  // Admin
+  adminUser: 'uid-admin-001',
   // Teachers
   teacherUser1: 'uid-teacher-001',
   teacherUser2: 'uid-teacher-002',
@@ -78,7 +80,11 @@ const IDs = {
   parentId: 'PAR001',
 };
 
-// ─── Data Definitions ────────────────────────────────────────
+const ADMIN = {
+  userId: IDs.adminUser, name: 'System Admin', email: 'admin@test.com',
+  password: 'password123', role: 'Admin', phone: '+91 0000000000',
+};
+
 const TEACHERS = [
   {
     userId: IDs.teacherUser1, name: 'Rajesh Kumar', email: 'teacher@test.com',
@@ -161,6 +167,7 @@ async function cleanDatabase() {
   ];
   // Only delete users that are part of our seed (teachers + students)
   const seedEmails = [
+    ADMIN.email,
     ...TEACHERS.map(t => t.email),
     ...STUDENTS.map(s => s.email),
     ...PARENTS.map(p => p.email),
@@ -202,6 +209,18 @@ async function seed() {
     ok(`Sequence seeded → student = ${STUDENTS.length}`);
   } catch (e) {
     warn(`Sequences: ${e.message}`);
+  }
+
+  // ─── 1.5 Admin ──────────────────────────────────────────
+  section('Admin');
+  try {
+    await db.execute(
+      'INSERT IGNORE INTO users (id, name, email, password, role, phone) VALUES (?, ?, ?, ?, ?, ?)',
+      [ADMIN.userId, ADMIN.name, ADMIN.email, ADMIN.password, ADMIN.role, ADMIN.phone]
+    );
+    ok(`Admin: ${ADMIN.name} (${ADMIN.email})`);
+  } catch (e) {
+    warn(`Admin: ${e.message}`);
   }
 
   // ─── 2. Teachers ─────────────────────────────────────────
@@ -506,6 +525,7 @@ async function seed() {
   console.log(c.bold('\n🔐 Login Credentials:\n'));
   console.log(`  ${c.cyan('ROLE')}       ${c.cyan('EMAIL')}                   ${c.cyan('PASSWORD')}`);
   console.log(`  ${'─'.repeat(55)}`);
+  console.log(`  Admin      admin@test.com            password123`);
   console.log(`  Teacher    teacher@test.com          password123`);
   console.log(`  Teacher    teacher2@test.com         password123`);
   console.log(`  Student    student@test.com          password123   ${c.dim('(Rahul Sharma — STU001)')}`);

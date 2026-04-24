@@ -3,29 +3,32 @@ const router = express.Router();
 const feeStructureController = require('../controllers/feeStructureController');
 const feeAssignmentController = require('../controllers/feeAssignmentController');
 const feeController = require('../controllers/feeController');
+const { verifyToken, requireRole } = require('../middleware/auth');
 
-// ─── Fee Structure (Admin) ─────────────────────────────────────────────────
-router.get('/structure', feeStructureController.getAllStructures);
-router.get('/structure/:id', feeStructureController.getStructureById);
-router.post('/structure', feeStructureController.createStructure);
-router.put('/structure/:id', feeStructureController.updateStructure);
-router.delete('/structure/:id', feeStructureController.deleteStructure);
+router.use(verifyToken);
 
-// ─── Fee Assignments (Admin) ───────────────────────────────────────────────
-router.get('/assignments', feeAssignmentController.getAssignments);
-router.get('/assignments/student/:studentId', feeAssignmentController.getStudentAssignments);
-router.post('/assignments', feeAssignmentController.assignFee);
-router.post('/assignments/bulk', feeAssignmentController.bulkAssignByClass);
-router.delete('/assignments/:id', feeAssignmentController.removeAssignment);
-router.get('/assignments/:id/payments', feeAssignmentController.getPaymentHistory);
-router.post('/assignments/:id/payment', feeAssignmentController.recordPayment);
+// ─── Fee Structure (Admin Only) ──────────────────────────────────────────
+router.get('/structure', requireRole('Admin', 'Teacher'), feeStructureController.getAllStructures);
+router.get('/structure/:id', requireRole('Admin', 'Teacher'), feeStructureController.getStructureById);
+router.post('/structure', requireRole('Admin'), feeStructureController.createStructure);
+router.put('/structure/:id', requireRole('Admin'), feeStructureController.updateStructure);
+router.delete('/structure/:id', requireRole('Admin'), feeStructureController.deleteStructure);
 
-router.get('/reports', feeAssignmentController.getFeeReports);
-router.get('/insights', feeAssignmentController.getFeeInsights);
+// ─── Fee Assignments (Admin Only) ────────────────────────────────────────
+router.get('/assignments', requireRole('Admin'), feeAssignmentController.getAssignments);
+router.get('/assignments/student/:studentId', feeAssignmentController.getStudentAssignments); // Ownership check in controller
+router.post('/assignments', requireRole('Admin'), feeAssignmentController.assignFee);
+router.post('/assignments/bulk', requireRole('Admin'), feeAssignmentController.bulkAssignByClass);
+router.delete('/assignments/:id', requireRole('Admin'), feeAssignmentController.removeAssignment);
+router.get('/assignments/:id/payments', requireRole('Admin'), feeAssignmentController.getPaymentHistory);
+router.post('/assignments/:id/payment', requireRole('Admin'), feeAssignmentController.recordPayment);
 
-// ─── Fee Status (Student/Parent — legacy) ─────────────────────────────────
-router.get('/:studentId', feeController.getFeeStatus);
-router.post('/:studentId', feeController.setFeeRecord);
-router.post('/:studentId/payment', feeController.recordPayment);
+router.get('/reports', requireRole('Admin', 'Teacher'), feeAssignmentController.getFeeReports);
+router.get('/insights', requireRole('Admin'), feeAssignmentController.getFeeInsights);
+
+// ─── Fee Status (Student/Parent) ──────────────────────────────────────────
+router.get('/:studentId', feeController.getFeeStatus); // Ownership check in controller
+router.post('/:studentId', requireRole('Admin'), feeController.setFeeRecord);
+router.post('/:studentId/payment', requireRole('Admin'), feeController.recordPayment);
 
 module.exports = router;

@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const { verifyToken, requireRole } = require('../middleware/auth');
+
+// All admin routes require a valid JWT and the 'Admin' role
+router.use(verifyToken);
+router.use(requireRole('Admin'));
 
 // Dashboard stats
 router.get('/stats', adminController.getStats);

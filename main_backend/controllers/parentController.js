@@ -1,8 +1,10 @@
 const db = require('../config/db');
+const { checkParentOwnership } = require('../middleware/auth');
 
 // Submit a new leave request
 exports.submitLeaveRequest = async (req, res) => {
-  const { userId, studentId, startDate, endDate, reason } = req.body;
+  const { studentId, startDate, endDate, reason } = req.body;
+  const parentUserId = req.user.id;
 
   if (!studentId || !startDate || !endDate || !reason) {
     return res.status(400).json({ error: 'Missing required fields for leave request.' });
@@ -10,14 +12,13 @@ exports.submitLeaveRequest = async (req, res) => {
 
   try {
     // Verify the parent is linked to this child
-    const [parentRows] = await db.execute('SELECT id FROM parents WHERE user_id = ? AND child_id = ?', [userId, studentId]);
-    if (parentRows.length === 0) {
+    if (req.user.role !== 'Parent') {
       return res.status(403).json({ error: 'Not authorized to request leave for this student.' });
     }
 
     await db.execute(
       'INSERT INTO leave_requests (student_id, parent_id, start_date, end_date, reason, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [studentId, userId, startDate, endDate, reason, 'Pending']
+      [studentId, parentUserId, startDate, endDate, reason, 'Pending']
     );
 
     res.status(201).json({ message: 'Leave request submitted successfully.' });
@@ -169,7 +170,9 @@ ${performanceStr}
 
 // Get Child Info (Name, Class, Teacher ID for Chat)
 exports.getChildInfo = async (req, res) => {
-  const { userId } = req.params; // Parent's User ID
+  // Use logged in user ID if not admin/teacher, or if userId param is missing
+  const userId = (req.user.role === 'Parent') ? req.user.id : (req.params.userId || req.user.id);
+  
   try {
     const [parentRows] = await db.execute(
       `SELECT p.child_id, s.dept, s.current_year, u.name as child_name 
@@ -221,6 +224,7 @@ exports.getWeeklySummary = async (req, res) => {
   const { studentId } = req.params;
 
   try {
+
     const [markRows] = await db.execute('SELECT subject, score, max_score, type FROM marks WHERE student_id = ? ORDER BY date DESC LIMIT 5', [studentId]);
     const [attendanceRows] = await db.execute('SELECT status FROM attendance WHERE student_id = ? ORDER BY date DESC LIMIT 14', [studentId]);
     const [leaveRows] = await db.execute('SELECT count(*) as count FROM leave_requests WHERE student_id = ? AND start_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)', [studentId]);
@@ -270,6 +274,7 @@ exports.getWeeklySummary = async (req, res) => {
 exports.getChildFees = async (req, res) => {
   const { studentId } = req.params;
   try {
+
     const [rows] = await db.execute(`
       SELECT 
         sfa.id, sfa.student_id, sfa.fee_structure_id,

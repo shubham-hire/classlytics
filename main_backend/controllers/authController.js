@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
     const { email, password } = req.body;
@@ -67,20 +68,39 @@ exports.login = async (req, res) => {
             if (parent.length > 0) extraInfo = parent[0];
         }
 
+        const userPayload = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            phone: user.phone,
+            dept: user.dept || null,
+            ...extraInfo
+        };
+
+        // 4. Sign JWT
+        const token = jwt.sign(
+            { id: user.id, name: user.name, email: user.email, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        );
+
+        console.log(`[AUTH] Login success for: ${email} (${user.role})`);
+
         res.status(200).json({
             message: 'Login successful',
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                phone: user.phone,
-                dept: user.dept || null,
-                ...extraInfo
-            }
+            token,
+            user: userPayload
         });
     } catch (err) {
         console.error('[AUTH] Login Error:', err);
         res.status(500).json({ error: err.message });
     }
 };
+
+// ─── GET /auth/me — Verify token and return current user ─────────────────
+exports.getMe = (req, res) => {
+    // req.user is populated by verifyToken middleware
+    res.status(200).json({ user: req.user });
+};
+

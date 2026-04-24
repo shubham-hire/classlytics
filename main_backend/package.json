@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node app.js",
     "seed": "node seed.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --detectOpenHandles --runInBand"
   },
   "keywords": [],
   "author": "",
@@ -18,9 +18,17 @@
     "country-state-city": "^3.2.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.4.0",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "mysql2": "^3.22.0",
     "nodemailer": "^8.0.5",
-    "uuid": "^13.0.0"
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "supertest": "^7.2.2"
   }
 }

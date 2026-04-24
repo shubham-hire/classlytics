@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const attendanceController = require('../controllers/attendanceController');
+const { verifyToken, requireRole } = require('../middleware/auth');
 
-// POST /attendance/batch — Bulk attendance for a class
-router.post('/batch', attendanceController.markBatchAttendance);
+router.use(verifyToken);
 
-// POST /attendance — Mark single student attendance
-router.post('/', attendanceController.markAttendance);
+// Marking attendance is restricted to staff
+router.post('/batch', requireRole('Teacher', 'Admin'), attendanceController.markBatchAttendance);
+router.post('/', requireRole('Teacher', 'Admin'), attendanceController.markAttendance);
 
-// GET /attendance/class/:classId — Class-level summary
-router.get('/class/:classId', attendanceController.getClassAttendanceSummary);
+// Class summary is restricted to staff
+router.get('/class/:classId', requireRole('Teacher', 'Admin'), attendanceController.getClassAttendanceSummary);
 
-// GET /attendance/:studentId — Individual student attendance
+// Individual student history can be viewed by staff OR the student themselves (checked in controller)
 router.get('/:studentId', attendanceController.getAttendanceByStudent);
 
 module.exports = router;
