@@ -146,7 +146,10 @@ class _TeacherListScreenState extends State<TeacherListScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: SingleChildScrollView(
-        child: DataTable(
+        scrollDirection: Axis.vertical,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
           headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
           dataRowHeight: 80,
           columns: const [
@@ -201,6 +204,7 @@ class _TeacherListScreenState extends State<TeacherListScreen> {
               ),
             ]);
           }).toList(),
+          ),
         ),
       ),
     );
@@ -225,7 +229,7 @@ class _TeacherListScreenState extends State<TeacherListScreen> {
                   ? NetworkImage('${ApiService.baseUrl}/uploads/${teacher.profileImg}')
                   : null,
               child: teacher.profileImg == null || teacher.profileImg!.isEmpty
-                  ? Text(teacher.name[0].toUpperCase())
+                  ? Text(teacher.name.isNotEmpty ? teacher.name[0].toUpperCase() : '?')
                   : null,
             ),
             title: Text(teacher.name, style: const TextStyle(fontWeight: FontWeight.bold)),

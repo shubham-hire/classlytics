@@ -294,7 +294,10 @@ class _UserListScreenState extends State<UserListScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: SingleChildScrollView(
-        child: DataTable(
+        scrollDirection: Axis.vertical,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
           headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
           dataRowHeight: 70,
           columns: const [
@@ -382,6 +385,7 @@ class _UserListScreenState extends State<UserListScreen> {
               ),
             ]);
           }).toList(),
+          ),
         ),
       ),
     );

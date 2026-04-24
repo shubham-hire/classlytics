@@ -91,7 +91,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     // ══════════ SECTION 3: ANALYTICS & MANAGEMENT ══════════
                     _sectionLabel('Analytics & Operations'),
                     const SizedBox(height: 8),
-                    Expanded(child: _buildAnalyticsRow()),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: _buildAnalyticsRow(),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -123,7 +127,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       final cols = c.maxWidth > 1100 ? 4 : (c.maxWidth > 700 ? 4 : 2);
       return GridView.count(
         shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: cols, childAspectRatio: c.maxWidth > 700 ? 2.2 : 1.6,
+        crossAxisCount: cols, childAspectRatio: c.maxWidth > 700 ? 1.9 : 1.6,
         mainAxisSpacing: 12, crossAxisSpacing: 12,
         children: cards.map((d) => _KpiCard(data: d)).toList(),
       );
@@ -149,17 +153,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Widget _buildLeftColumn() {
-    return Column(children: [
-      Expanded(child: _buildChartCard('Fee Collection Trend', Icons.trending_up_rounded, const Color(0xFF3B82F6), _buildLineChart())),
-      const SizedBox(height: 12),
-      Expanded(child: _buildChartCard('Daily Attendance %', Icons.calendar_today_rounded, const Color(0xFF10B981), _buildBarChart())),
-      const SizedBox(height: 12),
-      _buildQuickActionsCard(),
-    ]);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 300,
+          child: _buildChartCard('Fee Collection Trend', Icons.trending_up_rounded, const Color(0xFF3B82F6), _buildLineChart()),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 300,
+          child: _buildChartCard('Daily Attendance %', Icons.calendar_today_rounded, const Color(0xFF10B981), _buildBarChart()),
+        ),
+        const SizedBox(height: 12),
+        _buildQuickActionsCard(),
+      ],
+    );
   }
 
   Widget _buildRightColumn() {
-    return _buildAIStrategicCard();
+    return SizedBox(
+      height: 624, // Matches 2 charts (300*2) + spacing (12*2)
+      child: _buildAIStrategicCard(),
+    );
   }
 
   Widget _buildChartCard(String title, IconData icon, Color color, Widget chart) {
@@ -259,25 +275,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         const Text('Data-driven growth strategy',
           style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
         const Divider(color: Color(0xFF334155), height: 20),
-        FutureBuilder<String>(
-          future: _api.fetchAdminStrategicAdvice(),
-          builder: (ctx, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const Padding(padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  CircularProgressIndicator(color: Color(0xFF818CF8), strokeWidth: 2),
-                  SizedBox(height: 10),
-                  Text('Analyzing...', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
-                ])));
-            }
-            if (snap.hasError) {
-              return const Padding(padding: EdgeInsets.symmetric(vertical: 10),
-                child: Text('Could not load insights.',
-                  style: TextStyle(color: Color(0xFFF87171), fontSize: 12)));
-            }
-            final text = snap.data ?? '';
-            return Expanded(
-              child: SingleChildScrollView(
+        Expanded(
+          child: FutureBuilder<String>(
+            future: _api.fetchAdminStrategicAdvice(),
+            builder: (ctx, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Padding(padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    CircularProgressIndicator(color: Color(0xFF818CF8), strokeWidth: 2),
+                    SizedBox(height: 10),
+                    Text('Analyzing...', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                  ])));
+              }
+              if (snap.hasError) {
+                return const Padding(padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text('Could not load insights.',
+                    style: TextStyle(color: Color(0xFFF87171), fontSize: 12)));
+              }
+              final text = snap.data ?? '';
+              return SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   MarkdownBody(
@@ -291,9 +307,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                   ),
                 ]),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
         const SizedBox(height: 12),
         SizedBox(width: double.infinity,
