@@ -18,14 +18,14 @@ router.get('/parent/weekly-summary/:studentId', verifyOwnership(db), aiControlle
 router.post('/homework-help', aiController.getHomeworkHelp);
 
 // Teacher specific routes
-router.post('/teacher-help', requireRole('Teacher', 'Admin'), aiController.getTeacherHelp);
-router.get('/teacher/class-analysis/:classId', requireRole('Teacher', 'Admin'), aiController.getClassAnalysis);
+router.post('/teacher-help', requireRole('Teacher', 'ADMIN', 'Admin'), aiController.getTeacherHelp);
+router.get('/teacher/class-analysis/:classId', requireRole('Teacher', 'ADMIN', 'Admin'), aiController.getClassAnalysis);
 
 // Admin specific routes
-router.post('/admin/command-center', requireRole('Admin'), aiController.getAdminCommandCenter);
-router.post('/admin/draft-announcement', requireRole('Admin'), aiController.draftAnnouncement);
-router.post('/admin/student-feedback', requireRole('Admin'), aiController.generateStudentFeedback);
-router.get('/admin/risk-analysis', requireRole('Admin'), aiController.getRiskAnalysis);
-router.get('/admin/strategic-advice', requireRole('Admin'), aiController.getAdminStrategicAdvice);
+router.post('/admin/command-center', requireRole('ADMIN', 'Admin'), aiController.getAdminCommandCenter);
+router.post('/admin/draft-announcement', requireRole('ADMIN', 'Admin'), aiController.draftAnnouncement);
+router.post('/admin/student-feedback', requireRole('ADMIN', 'Admin'), aiController.generateStudentFeedback);
+router.get('/admin/risk-analysis', requireRole('ADMIN', 'Admin'), aiController.getRiskAnalysis);
+router.get('/admin/strategic-advice', requireRole('ADMIN', 'Admin'), aiController.getAdminStrategicAdvice);
 
 module.exports = router;

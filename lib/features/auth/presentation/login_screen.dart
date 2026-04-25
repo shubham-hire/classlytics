@@ -17,7 +17,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final ApiService _apiService = ApiService();
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    clientId: 'dummy-client-id.apps.googleusercontent.com', // Prevents crash on web when meta tag is missing
+  );
+
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   bool _obscureText = true;
@@ -83,6 +87,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           context.go('/dashboard', extra: UserRole.parent);
         } else if (role == 'admin') {
           context.go('/admin');
+        } else if (role == 'department_admin') {
+          context.go('/dept-admin');
         } else {
           context.go('/teacher-dashboard');
         }

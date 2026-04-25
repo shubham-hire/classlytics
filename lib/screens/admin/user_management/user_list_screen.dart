@@ -147,6 +147,10 @@ class _UserListScreenState extends State<UserListScreen> {
               Navigator.pop(ctx);
               context.push('/admin/users/new');
             }),
+            _roleDialogOption('Dept Admin', Icons.manage_accounts_rounded, const Color(0xFF8B5CF6), () {
+              Navigator.pop(ctx);
+              context.push('/admin/create-dept-admin');
+            }),
           ],
         ),
       ),
@@ -172,6 +176,7 @@ class _UserListScreenState extends State<UserListScreen> {
       case 'Teacher': return const Color(0xFF10B981);
       case 'Parent':  return const Color(0xFFF59E0B);
       case 'Admin':   return const Color(0xFF8B5CF6);
+      case 'DEPARTMENT_ADMIN': return const Color(0xFF7C3AED);
       default:        return Colors.grey;
     }
   }
@@ -182,6 +187,7 @@ class _UserListScreenState extends State<UserListScreen> {
       case 'Teacher': return Icons.person_rounded;
       case 'Parent':  return Icons.family_restroom_rounded;
       case 'Admin':   return Icons.admin_panel_settings_rounded;
+      case 'DEPARTMENT_ADMIN': return Icons.manage_accounts_rounded;
       default:        return Icons.person_outline;
     }
   }

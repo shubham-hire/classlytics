@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../models/department.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // Use 127.0.0.1 for Web/Desktop, 10.0.2.2 for Emulator, or your local LAN IP for physical device
@@ -12,15 +14,33 @@ class ApiService {
   // ── JWT Token Storage ──────────────────────────────────────
   static String? _authToken;
 
+  /// Load token from storage on app start
+  static Future<void> initToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    _authToken = prefs.getString('auth_token');
+    if (_authToken != null) {
+      debugPrint('ApiService: Token restored from storage.');
+    }
+  }
+
   /// Store JWT after login
-  static void setAuthToken(String token) => _authToken = token;
+  static void setAuthToken(String token) async {
+    _authToken = token;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
+  }
 
   /// Clear JWT on logout
-  static void clearAuthToken() => _authToken = null;
+  static void clearAuthToken() async {
+    _authToken = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+  }
 
   /// Returns headers with Authorization for protected routes
   Map<String, String> get _authHeaders => {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     if (_authToken != null) 'Authorization': 'Bearer $_authToken',
   };
 
@@ -1622,4 +1642,231 @@ class ApiService {
       throw Exception('Error fetching strategic advice: $e');
     }
   }
+
+  // ==============================
+  // SUPER ADMIN
+  // ==============================
+
+  Future<Map<String, dynamic>> createDepartmentAdmin({
+    required String name,
+    required String email,
+    String? password,
+    required int departmentId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/admin/create-department-admin');
+    final response = await http.post(url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          if (password != null && password.isNotEmpty) 'password': password,
+          'department_id': departmentId,
+        }));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create Department Admin');
+  }
+
+  Future<List<dynamic>> getDepartmentAdmins() async {
+    final url = Uri.parse('$_baseUrl/api/admin/department-admins');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['departmentAdmins'] as List<dynamic>;
+    }
+    throw Exception('Failed to fetch Department Admins');
+  }
+
+  Future<void> deleteDepartmentAdmin(String id) async {
+    final url = Uri.parse('$_baseUrl/api/admin/department-admin/$id');
+    final response = await http.delete(url, headers: _authHeaders);
+    if (response.statusCode != 200) {
+      throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to delete');
+    }
+  }
+
+  Future<List<Department>> getDepartments() async {
+    final url = Uri.parse('$_baseUrl/api/departments');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((e) => Department.fromJson(e)).toList();
+    }
+    throw Exception('Failed to fetch departments');
+  }
+
+  // ==============================
+  // DEPT ADMIN  // ─── DEPARTMENT ADMIN DASHBOARD / MANAGEMENT ───
+  Future<Map<String, dynamic>> getDepartmentAdminProfile() async {
+    final url = Uri.parse('$_baseUrl/api/department-admin/profile');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to fetch department admin profile');
+  }
+
+  Future<List<dynamic>> deptAdminGetDepartments() async {
+    final url = Uri.parse('$_baseUrl/dept-admin/department');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) return jsonDecode(response.body) as List<dynamic>;
+    throw Exception('Failed to fetch departments');
+  }
+
+  Future<Map<String, dynamic>> deptAdminCreateDepartment(String name) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/department');
+    final response = await http.post(url,
+        headers: _authHeaders, body: jsonEncode({'name': name}));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create department');
+  }
+
+  // ==============================
+  // DEPT ADMIN — CLASSES
+  // ==============================
+
+  Future<List<dynamic>> deptAdminGetClasses(int departmentId) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/department/$departmentId/classes');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) return jsonDecode(response.body) as List<dynamic>;
+    throw Exception('Failed to fetch classes');
+  }
+
+  Future<Map<String, dynamic>> deptAdminCreateClass({
+    required String name,
+    required String section,
+    int? departmentId,
+    String? teacherId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/class');
+    final response = await http.post(url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'name': name,
+          'section': section,
+          if (departmentId != null) 'department_id': departmentId,
+          if (teacherId != null) 'teacher_id': teacherId,
+        }));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create class');
+  }
+
+  // ==============================
+  // DEPT ADMIN — DIVISIONS
+  // ==============================
+
+  Future<List<dynamic>> deptAdminGetDivisions(String classId) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/class/$classId/divisions');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) return jsonDecode(response.body) as List<dynamic>;
+    throw Exception('Failed to fetch divisions');
+  }
+
+  Future<Map<String, dynamic>> deptAdminCreateDivision({
+    required String classId,
+    required String divisionName,
+  }) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/division');
+    final response = await http.post(url,
+        headers: _authHeaders,
+        body: jsonEncode({'class_id': classId, 'division_name': divisionName}));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create division');
+  }
+
+  // ==============================
+  // DEPT ADMIN — STUDENTS
+  // ==============================
+
+  Future<List<dynamic>> deptAdminGetStudents(int divisionId) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/division/$divisionId/students');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) return jsonDecode(response.body) as List<dynamic>;
+    throw Exception('Failed to fetch students');
+  }
+
+  Future<Map<String, dynamic>> deptAdminAddStudent({
+    required String name,
+    required String email,
+    required int divisionId,
+    String? rollNo,
+    String? dob,
+    String? currentYear,
+  }) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/student');
+    final response = await http.post(url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'division_id': divisionId,
+          if (rollNo != null) 'roll_no': rollNo,
+          if (dob != null) 'dob': dob,
+          if (currentYear != null) 'current_year': currentYear,
+        }));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to add student');
+  }
+
+  // ==============================
+  // DEPT ADMIN — TIMETABLE
+  // ==============================
+
+  Future<List<dynamic>> deptAdminGetTimetable(String classId, String divisionId) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/timetable/$classId/$divisionId');
+    final response = await http.get(url, headers: _authHeaders);
+    if (response.statusCode == 200) return jsonDecode(response.body) as List<dynamic>;
+    throw Exception('Failed to fetch timetable');
+  }
+
+  Future<Map<String, dynamic>> deptAdminCreateTimetableEntry({
+    required String classId,
+    int? divisionId,
+    required String subject,
+    String? teacherId,
+    required String dayOfWeek,
+    required String startTime,
+    required String endTime,
+  }) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/timetable');
+    final response = await http.post(url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'class_id': classId,
+          if (divisionId != null) 'division_id': divisionId,
+          'subject': subject,
+          if (teacherId != null) 'teacher_id': teacherId,
+          'day_of_week': dayOfWeek,
+          'start_time': startTime,
+          'end_time': endTime,
+        }));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create timetable entry');
+  }
+
+  Future<void> deptAdminDeleteTimetableEntry(int id) async {
+    final url = Uri.parse('$_baseUrl/dept-admin/timetable/$id');
+    final response = await http.delete(url, headers: _authHeaders);
+    if (response.statusCode != 200) {
+      throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to delete');
+    }
+  }
+
+  // ==============================
+  // GLOBAL DEPARTMENTS (Centralized)
+  // ==============================
+
+
+
+  Future<Map<String, dynamic>> createDepartment(String name) async {
+    final url = Uri.parse('$_baseUrl/departments');
+    final response = await http.post(url,
+        headers: _authHeaders, body: jsonEncode({'name': name}));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create department');
+  }
 }
+

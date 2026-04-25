@@ -44,8 +44,32 @@ import '../../screens/admin/user_management/teacher_list_screen.dart';
 import '../../screens/admin/communication/admin_announcements_screen.dart';
 import '../../screens/admin/risk_tracker/admin_risk_tracker_screen.dart';
 
+import '../../screens/admin/user_management/create_dept_admin_screen.dart';
+
+// Department Admin Imports
+import '../../screens/dept_admin/dept_admin_dashboard_screen.dart';
+import '../../screens/dept_admin/dept_admin_manage_dept_screen.dart';
+import '../../screens/dept_admin/dept_admin_manage_classes_screen.dart';
+import '../../screens/dept_admin/dept_admin_manage_divisions_screen.dart';
+import '../../screens/dept_admin/dept_admin_students_screen.dart';
+import '../../screens/dept_admin/dept_admin_timetable_screen.dart';
+import '../../screens/dept_admin/dept_admin_profile_screen.dart';
+
+import '../../services/auth_store.dart';
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
+  redirect: (context, state) {
+    final isGoingToLogin = state.uri.path == '/login';
+    final isAuthenticated = AuthStore.instance.isAuthenticated;
+
+    // Prevent unauthenticated users from accessing protected routes
+    if (!isAuthenticated && !isGoingToLogin) {
+      return '/login';
+    }
+
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/',
@@ -280,6 +304,54 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/admin/risk-tracker',
       builder: (context, state) => const AdminRiskTrackerScreen(),
+    ),
+
+    // ─── DEPARTMENT ADMIN CREATION ───
+    GoRoute(
+      path: '/admin/create-dept-admin',
+      builder: (context, state) => const CreateDeptAdminScreen(),
+    ),
+
+    // ─── DEPARTMENT ADMIN ROUTES ───
+    GoRoute(
+      path: '/dept-admin',
+      builder: (context, state) => const DeptAdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/dept-admin/department',
+      builder: (context, state) => const DeptAdminManageDeptScreen(),
+    ),
+    GoRoute(
+      path: '/dept-admin/profile',
+      builder: (context, state) => const DeptAdminProfileScreen(),
+    ),
+    GoRoute(
+      path: '/dept-admin/classes',
+      builder: (context, state) {
+        final deptId = int.tryParse(state.uri.queryParameters['deptId'] ?? '');
+        final deptName = state.uri.queryParameters['deptName'];
+        return DeptAdminManageClassesScreen(deptId: deptId, deptName: deptName);
+      },
+    ),
+    GoRoute(
+      path: '/dept-admin/divisions',
+      builder: (context, state) {
+        final classId = state.uri.queryParameters['classId'];
+        final className = state.uri.queryParameters['className'];
+        return DeptAdminManageDivisionsScreen(classId: classId, className: className);
+      },
+    ),
+    GoRoute(
+      path: '/dept-admin/students',
+      builder: (context, state) {
+        final divisionId = int.tryParse(state.uri.queryParameters['divisionId'] ?? '');
+        final divisionName = state.uri.queryParameters['divisionName'];
+        return DeptAdminStudentsScreen(divisionId: divisionId, divisionName: divisionName);
+      },
+    ),
+    GoRoute(
+      path: '/dept-admin/timetable',
+      builder: (context, state) => const DeptAdminTimetableScreen(),
     ),
   ],
 );

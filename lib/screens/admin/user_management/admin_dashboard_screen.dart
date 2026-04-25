@@ -333,6 +333,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final actions = [
       _ActionData('Manage Users',   Icons.people_alt_rounded,            const Color(0xFF3B82F6), '/admin/users'),
       _ActionData('Add User',       Icons.person_add_rounded,            const Color(0xFF10B981), '/admin/users/new'),
+      _ActionData('Dept Admins',    Icons.manage_accounts_rounded,       const Color(0xFF8B5CF6), '/admin/create-dept-admin'),
       _ActionData('Fee Setup',      Icons.account_balance_wallet_rounded, const Color(0xFF6366F1), '/admin/fees/structure'),
       _ActionData('Bulk Upload',    Icons.upload_file_rounded,           const Color(0xFFF59E0B), '/admin/users/bulk'),
       _ActionData('Fee Reports',    Icons.bar_chart_rounded,             const Color(0xFF8B5CF6), '/admin/fees/reports'),

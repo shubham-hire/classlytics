@@ -62,9 +62,13 @@ class AcademicPlanningScreen extends StatelessWidget {
             // Attendance Diagram (Subject-wise)
             const Text('Subject-wise Attendance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.85,
               children: [
                 _buildAttendanceRing(context, 'Math', 78, Colors.blue),
                 _buildAttendanceRing(context, 'Physics', 85, Colors.orange),
@@ -145,9 +149,7 @@ class AcademicPlanningScreen extends StatelessWidget {
   }
 
   Widget _buildAttendanceRing(BuildContext context, String subject, int percentage, Color color) {
-    double width = (MediaQuery.of(context).size.width - 40 - 16) / 2;
     return Container(
-      width: width,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,

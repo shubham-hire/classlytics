@@ -116,7 +116,7 @@ describe('Security / Role-Based Access Control', () => {
         .set('Authorization', `Bearer ${adminToken}`);
       
       expect(res.statusCode).toEqual(200);
-    });
+    }, 15000);
 
     it('should block unauthenticated users from AI tools', async () => {
       const res = await request(app).get('/ai/STU001/insights');

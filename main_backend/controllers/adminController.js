@@ -2,6 +2,7 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
+const emailService = require('../utils/emailService');
 
 // ─── Helper: Generate sequential student ID ───
 async function generateStudentId(connection) {
@@ -502,6 +503,73 @@ exports.getVisualAnalytics = async (req, res) => {
     });
   } catch (err) {
     console.error('[Admin Visual Analytics] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─── Department Admin Management ───
+exports.createDepartmentAdmin = async (req, res) => {
+  const { name, email, department_id } = req.body;
+  if (!name || !email || !department_id) {
+    return res.status(400).json({ error: 'Name, email, and department_id are required' });
+  }
+
+  try {
+    const userId = uuidv4();
+    const rawPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+    
+    const [existing] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+    if (existing.length > 0) return res.status(400).json({ error: 'Email already exists' });
+
+    await db.execute(
+      'INSERT INTO users (id, name, email, password, role, is_active, department_id) VALUES (?, ?, ?, ?, "DEPARTMENT_ADMIN", 1, ?)',
+      [userId, name, email, hashedPassword, department_id]
+    );
+
+    // 5. Send welcome email (async)
+    const [depts] = await db.execute('SELECT name FROM departments WHERE id = ?', [department_id]);
+    const departmentName = depts.length > 0 ? depts[0].name : 'N/A';
+    emailService.sendDeptAdminWelcomeEmail({ name, email }, rawPassword, departmentName)
+      .catch(err => console.error('[AUTH] Failed to send welcome email:', err.message));
+
+    console.log(`[Admin] Dept Admin created: ${email} | Password: ${rawPassword}`);
+
+    res.status(201).json({ 
+      message: 'Department Admin created successfully', 
+      userId, 
+      emailSent: true,
+      tempPassword: rawPassword 
+    });
+  } catch (err) {
+    console.error('[Admin createDepartmentAdmin] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getDepartmentAdmins = async (req, res) => {
+  try {
+    const query = `
+      SELECT u.id, u.name, u.email, u.department_id, d.name AS department_name
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.role = 'DEPARTMENT_ADMIN'
+    `;
+    const [rows] = await db.execute(query);
+    res.status(200).json({ departmentAdmins: rows });
+  } catch (err) {
+    console.error('[Admin getDepartmentAdmins] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deleteDepartmentAdmin = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.execute('DELETE FROM users WHERE id = ? AND role = "DEPARTMENT_ADMIN"', [id]);
+    res.status(200).json({ message: 'Department Admin deleted successfully' });
+  } catch (err) {
+    console.error('[Admin deleteDepartmentAdmin] Error:', err);
     res.status(500).json({ error: err.message });
   }
 };

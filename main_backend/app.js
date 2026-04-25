@@ -19,6 +19,8 @@ const quizRoutes = require('./routes/quizRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const parentRoutes = require('./routes/parentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+
+const departmentAdminRoutes = require('./routes/departmentAdminRoutes');
 const initDb = require('./config/initDb');
 const path = require('path');
 
@@ -86,6 +88,10 @@ app.use('/quizzes', quizRoutes);
 app.use('/chat', chatRoutes);
 app.use('/parent', parentRoutes);
 app.use('/api/admin', adminRoutes);
+
+app.use('/dept-admin', departmentAdminRoutes);
+app.use('/api/department-admin', departmentAdminRoutes);
+app.use('/api/departments', require('./routes/departmentRoutes'));
 
 // Base route for connectivity check
 app.get('/', (req, res) => {

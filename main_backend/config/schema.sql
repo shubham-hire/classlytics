@@ -8,20 +8,28 @@ CREATE TABLE IF NOT EXISTS global_sequences (
 INSERT IGNORE INTO global_sequences (name, `last_value`) VALUES ('student', 0);
 INSERT IGNORE INTO global_sequences (name, `last_value`) VALUES ('teacher', 0);
 -- Users Table (Handles Admin, Teacher, Student, Parent)
+CREATE TABLE IF NOT EXISTS departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role ENUM('Admin', 'Teacher', 'Student', 'Parent') NOT NULL,
+    role ENUM('ADMIN', 'Admin', 'Teacher', 'Student', 'Parent', 'DEPARTMENT_ADMIN') NOT NULL,
     phone VARCHAR(20),
     address TEXT,
     country VARCHAR(100),
     state VARCHAR(100),
     district VARCHAR(100),
     city VARCHAR(100),
-    dept VARCHAR(50), -- Added for Teachers/Admins to manage students in same dept
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dept VARCHAR(50),
+    department_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
 );
 
 -- Teachers Table (Extension of Users for Teachers)
@@ -56,7 +64,18 @@ CREATE TABLE IF NOT EXISTS classes (
     name VARCHAR(50) NOT NULL,
     section VARCHAR(10) NOT NULL,
     teacher_id VARCHAR(50),
-    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
+    department_id INT,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+);
+
+-- Divisions Table (sub-sections of a class, e.g. A, B, C)
+CREATE TABLE IF NOT EXISTS divisions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    class_id VARCHAR(50) NOT NULL,
+    division_name VARCHAR(10) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
 );
 
 -- Students Table (Global Registration)
@@ -69,8 +88,26 @@ CREATE TABLE IF NOT EXISTS students (
     dob DATE,
     parent_id VARCHAR(50),
     profile_img VARCHAR(255),
+    division_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE SET NULL
+);
+
+-- Timetable Table
+CREATE TABLE IF NOT EXISTS timetable (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    class_id VARCHAR(50) NOT NULL,
+    division_id INT,
+    subject VARCHAR(100) NOT NULL,
+    teacher_id VARCHAR(50),
+    day_of_week VARCHAR(20) NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE SET NULL,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Parents Table (Links Parents to Students)

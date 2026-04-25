@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import '../../../services/api_service.dart';
+import '../../../models/department.dart';
 import '../../../core/theme/app_theme.dart';
 
 class UserFormScreen extends StatefulWidget {
@@ -65,18 +66,8 @@ class _UserFormScreenState extends State<UserFormScreen> {
     '10th Grade', '11th Grade', '12th Grade'
   ];
   final List<String> _relations = ['Father', 'Mother', 'Guardian', 'Other'];
-  final List<String> _departments = [
-    'Computer Science',
-    'Information Technology',
-    'Mechanical Engineering',
-    'Electronics & TC',
-    'Civil Engineering',
-    'Applied Sciences',
-    'Science',
-    'Commerce',
-    'Arts',
-    'General'
-  ];
+  List<Department> _departmentList = [];
+  int? _selectedDeptId;
 
   @override
   void initState() {
@@ -105,9 +96,11 @@ class _UserFormScreenState extends State<UserFormScreen> {
       // Load dropdown data
       final classesF = _api.fetchAdminClasses();
       final studentsF = _api.fetchAdminStudentsList();
-      final results = await Future.wait([classesF, studentsF]);
+      final deptsF = _api.getDepartments();
+      final results = await Future.wait<dynamic>([classesF, studentsF, deptsF]);
       _classes = results[0] as List<dynamic>;
       _studentsList = results[1] as List<dynamic>;
+      _departmentList = results[2] as List<Department>;
       
       await _loadStates();
 
@@ -119,11 +112,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
         _phoneController.text = user['phone'] ?? '';
         _addressController.text = user['address'] ?? '';
         _selectedRole = user['role'] ?? 'Student';
-        final dept = user['dept'] ?? '';
-        _deptController.text = dept;
-        if (dept.isNotEmpty && !_departments.contains(dept)) {
-          _departments.add(dept);
-        }
+        _selectedDeptId = user['department_id'];
         _selectedCountry = user['country'] ?? 'India';
         _selectedState = user['state'];
         _selectedCity = user['city'];
@@ -191,7 +180,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
       'role': _selectedRole,
       'phone': _phoneController.text.trim(),
       'address': _addressController.text.trim(),
-      'dept': _deptController.text.trim(),
+      'department_id': _selectedDeptId,
       'country': _selectedCountry,
       'state': _selectedState ?? '',
       'city': _selectedCity ?? '',
@@ -480,12 +469,15 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           enabled: !widget.isEditMode),
                       _textField(_phoneController, 'Phone Number', Icons.phone_rounded,
                           keyboardType: TextInputType.phone),
-                      DropdownButtonFormField<String>(
-                        value: _deptController.text.isEmpty ? null : _deptController.text,
+                      DropdownButtonFormField<int>(
+                        value: _selectedDeptId,
                         decoration: _inputDecoration('Department', Icons.business_rounded),
-                        items: _departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                        onChanged: (v) => setState(() => _deptController.text = v ?? ''),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Department is required' : null,
+                        items: _departmentList.map((d) => DropdownMenuItem<int>(
+                          value: d.id,
+                          child: Text(d.name),
+                        )).toList(),
+                        onChanged: (v) => setState(() => _selectedDeptId = v),
+                        validator: (v) => (v == null) ? 'Department is required' : null,
                       ),
                     ]),
 

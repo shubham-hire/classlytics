@@ -2,20 +2,23 @@ const jwt = require('jsonwebtoken');
 
 // ─── Verify JWT Token ──────────────────────────────────────────────────────
 exports.verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ') 
-    ? authHeader.split(' ')[1] 
-    : null;
-
-  if (!token) {
+  const authHeader = req.header("Authorization");
+  
+  if (!authHeader) {
+    console.warn(`[AUTH] Access denied: No Authorization header for ${req.method} ${req.path}`);
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
+
+  const token = authHeader.startsWith('Bearer ') 
+    ? authHeader.split(' ')[1] 
+    : authHeader; // Fallback if Bearer prefix is missing (though Bearer is recommended)
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded; // { id, name, email, role }
     next();
   } catch (err) {
+    console.error(`[AUTH] Token validation failed: ${err.message}`);
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired. Please log in again.' });
     }
@@ -29,7 +32,9 @@ exports.requireRole = (...roles) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated.' });
     }
-    if (!roles.includes(req.user.role)) {
+    const userRole = req.user.role.toUpperCase();
+    const allowedRoles = roles.map(r => r.toUpperCase());
+    if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({ 
         error: `Access forbidden. Required role: ${roles.join(' or ')}. Your role: ${req.user.role}` 
       });
@@ -38,10 +43,14 @@ exports.requireRole = (...roles) => {
   };
 };
 
+// ─── checkRole — alias for requireRole (RBAC shorthand) ───────────────────
+exports.checkRole = exports.requireRole;
+
 // ─── Check if student can access a resource ──────────────────────────────
 // Allows Admin, Teacher, the Student themselves, or their Parent.
 exports.checkStudentOwnership = async (db, studentId, requester) => {
-  if (requester.role === 'Admin' || requester.role === 'Teacher') {
+  if (requester.role === 'Admin' || requester.role === 'Teacher' ||
+      requester.role === 'ADMIN' || requester.role === 'DEPARTMENT_ADMIN') {
     return true; // Staff can see all
   }
   

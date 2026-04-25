@@ -44,6 +44,7 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   fl_chart: ^1.2.0
   google_sign_in: ^6.2.1
+  shared_preferences: ^2.5.2
 
 
 dev_dependencies:

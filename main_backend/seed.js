@@ -82,7 +82,7 @@ const IDs = {
 
 const ADMIN = {
   userId: IDs.adminUser, name: 'System Admin', email: 'admin@test.com',
-  password: 'password123', role: 'Admin', phone: '+91 0000000000',
+  password: 'password123', role: 'ADMIN', phone: '+91 0000000000',
 };
 
 const TEACHERS = [
@@ -173,13 +173,19 @@ async function cleanDatabase() {
     ...PARENTS.map(p => p.email),
   ];
 
-  for (const table of tables) {
-    try {
-      await db.execute(`DELETE FROM \`${table}\``);
-      ok(`Cleared table: ${table}`);
-    } catch (e) {
-      warn(`Could not clear ${table}: ${e.message}`);
+  // Disable foreign key checks to allow clearing tables with circular dependencies
+  try {
+    await db.execute('SET FOREIGN_KEY_CHECKS = 0');
+    for (const table of tables) {
+      try {
+        await db.execute(`DELETE FROM \`${table}\``);
+        ok(`Cleared table: ${table}`);
+      } catch (e) {
+        warn(`Could not clear ${table}: ${e.message}`);
+      }
     }
+  } finally {
+    await db.execute('SET FOREIGN_KEY_CHECKS = 1');
   }
 
   try {

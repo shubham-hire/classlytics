@@ -5,7 +5,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 
 // All admin routes require a valid JWT and the 'Admin' role
 router.use(verifyToken);
-router.use(requireRole('Admin'));
+router.use(requireRole('ADMIN', 'Admin'));
 
 // Dashboard stats
 router.get('/stats', adminController.getStats);
@@ -36,5 +36,10 @@ router.get('/teachers', teacherAdminController.getTeachers);
 router.get('/teachers/:id', teacherAdminController.getTeacherById);
 router.put('/teachers/:id', upload.single('profile_img'), teacherAdminController.updateTeacher);
 router.delete('/teachers/:id', teacherAdminController.deleteTeacher);
+
+// Department Admin Management
+router.post('/create-department-admin', adminController.createDepartmentAdmin);
+router.get('/department-admins', adminController.getDepartmentAdmins);
+router.delete('/department-admin/:id', adminController.deleteDepartmentAdmin);
 
 module.exports = router;

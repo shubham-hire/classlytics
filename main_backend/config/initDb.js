@@ -146,6 +146,78 @@ const initDb = async () => {
             console.log('✅ [DB MIGRATION] student_fee_assignments table ensured.');
         } catch (e) { /* already exists */ }
 
+        // ─── DEPARTMENT_ADMIN Migration ───────────────────────────────────────
+        // Ensure departments table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS departments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+            console.log('✅ [DB MIGRATION] departments table ensured.');
+            
+            // Auto-seed default department
+            const [rows] = await db.execute('SELECT COUNT(*) as count FROM departments');
+            if (rows[0].count === 0) {
+                await db.execute('INSERT INTO departments (name) VALUES ("General Engineering")');
+                console.log('🌱 [DB SEED] Created default department: General Engineering');
+            }
+        } catch (e) { /* already exists */ }
+
+        // Ensure divisions table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS divisions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                class_id VARCHAR(50) NOT NULL,
+                division_name VARCHAR(10) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+            )`);
+            console.log('✅ [DB MIGRATION] divisions table ensured.');
+        } catch (e) { /* already exists */ }
+
+        // Ensure timetable table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS timetable (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                class_id VARCHAR(50) NOT NULL,
+                division_id INT,
+                subject VARCHAR(100) NOT NULL,
+                teacher_id VARCHAR(50),
+                day_of_week VARCHAR(20) NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+                FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE SET NULL,
+                FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
+            )`);
+            console.log('✅ [DB MIGRATION] timetable table ensured.');
+        } catch (e) { /* already exists */ }
+
+        // Ensure users.department_id column exists
+        try {
+            await db.execute('ALTER TABLE users ADD COLUMN department_id INT, ADD FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added column department_id to users');
+        } catch (e) { /* already exists */ }
+
+        // Ensure classes.department_id column exists
+        try {
+            await db.execute('ALTER TABLE classes ADD COLUMN department_id INT, ADD FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added column department_id to classes');
+        } catch (e) { /* already exists */ }
+
+        // Ensure students.division_id column exists
+        try {
+            await db.execute('ALTER TABLE students ADD COLUMN division_id INT, ADD FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added column division_id to students');
+        } catch (e) { /* already exists */ }
+
+        try {
+            await db.execute(`ALTER TABLE users MODIFY COLUMN role ENUM('ADMIN','Admin','Teacher','Student','Parent','DEPARTMENT_ADMIN') NOT NULL`);
+            console.log('📡 [DB MIGRATION] Updated users.role ENUM to include ADMIN and DEPARTMENT_ADMIN');
+        } catch (e) { /* already correct */ }
+
         // Ensure fee_payments table exists
         try {
             await db.execute(`CREATE TABLE IF NOT EXISTS fee_payments (
