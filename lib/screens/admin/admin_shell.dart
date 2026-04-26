@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import 'command_center_dialog.dart';
 import 'admin_ai_chat_panel.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_store.dart';
 
 class AdminShell extends StatefulWidget {
   final Widget child;
@@ -204,7 +206,7 @@ class _AdminShellState extends State<AdminShell> {
               children: [
                 _buildNavItem(Icons.dashboard_rounded, 'Dashboard', '/admin', context),
                 _buildNavItem(Icons.people_alt_rounded, 'Users', '/admin/users', context),
-                _buildNavItem(Icons.badge_rounded, 'Teachers', '/admin/teachers', context),
+                _buildNavItem(Icons.badge_rounded, 'Teacher Module', '/admin/teachers', context),
                 _buildNavItem(Icons.account_balance_wallet_rounded, 'Financials', '/admin/fees/structure', context),
                 _buildNavItem(Icons.bar_chart_rounded, 'Reports', '/admin/fees/reports', context),
                 _buildNavItem(Icons.campaign_rounded, 'Announcements', '/admin/announcements', context),
@@ -246,9 +248,11 @@ class _AdminShellState extends State<AdminShell> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
+          onTap: () async {
             if (isLogout) {
-              context.go(route);
+              ApiService.clearAuthToken();
+              await AuthStore.instance.clear();
+              if (context.mounted) context.go(route);
             } else {
               context.push(route);
             }

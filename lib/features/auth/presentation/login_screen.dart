@@ -76,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       final user = result['user'];
       final role = (user['role'] as String).toLowerCase();
 
-      AuthStore.instance.setUser(user);
+      await AuthStore.instance.setUser(user);
 
       if (mounted) {
         if (role == 'teacher') {

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 /// A simple singleton that persists the authenticated user's data
 /// across route navigations when using GoRouter (which doesn't support
 /// passing complex objects via path parameters).
@@ -7,9 +10,20 @@ class AuthStore {
 
   Map<String, dynamic>? _currentUser;
 
+  /// Load user data from storage on app start
+  Future<void> loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('current_user');
+    if (userJson != null) {
+      _currentUser = jsonDecode(userJson);
+    }
+  }
+
   /// Save user data after a successful login
-  void setUser(Map<String, dynamic> user) {
+  Future<void> setUser(Map<String, dynamic> user) async {
     _currentUser = user;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('current_user', jsonEncode(user));
   }
 
   /// Returns the currently logged-in user's data, or null if not logged in
@@ -19,8 +33,10 @@ class AuthStore {
   dynamic get(String key) => _currentUser?[key];
 
   /// Clears user data on logout
-  void clear() {
+  Future<void> clear() async {
     _currentUser = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('current_user');
   }
 
   /// Check if user is authenticated

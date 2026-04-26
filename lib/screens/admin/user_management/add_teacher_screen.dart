@@ -22,7 +22,6 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
   // Controllers
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
@@ -154,7 +153,6 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
 
       if (!_isEditing) {
         data['email'] = _emailCtrl.text.trim();
-        data['password'] = _passwordCtrl.text.trim();
         await _api.createTeacher(data, imagePath: _imageFile?.path);
       } else {
         await _api.updateTeacher(widget.teacherId!, data, imagePath: _imageFile?.path);
@@ -201,8 +199,27 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                       if (!_isEditing) ...[
                         _buildField(_emailCtrl, 'Email Address', Icons.email_rounded, required: true, isEmail: true),
                         const SizedBox(height: 12),
-                        _buildField(_passwordCtrl, 'Initial Password', Icons.lock_rounded, required: true, isPassword: true),
-                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.blue.shade100),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, color: Colors.blue, size: 20),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Password will be auto-generated and sent via email.',
+                                  style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                       Row(
                         children: [

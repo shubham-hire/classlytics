@@ -139,10 +139,6 @@ class _UserListScreenState extends State<UserListScreen> {
               Navigator.pop(ctx);
               context.push('/add-student/GLOBAL');
             }),
-            _roleDialogOption('Teacher', Icons.person_rounded, const Color(0xFF10B981), () {
-              Navigator.pop(ctx);
-              context.push('/admin/users/new');
-            }),
             _roleDialogOption('Parent', Icons.family_restroom_rounded, const Color(0xFFF59E0B), () {
               Navigator.pop(ctx);
               context.push('/admin/users/new');

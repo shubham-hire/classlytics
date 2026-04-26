@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const emailService = require('../utils/emailService');
 
 // Helper: Generate sequential teacher ID
 async function generateTeacherId(connection) {
@@ -13,7 +14,7 @@ async function generateTeacherId(connection) {
 exports.createTeacher = async (req, res) => {
   const {
     // User fields
-    name, email, password, phone, address, country, state, district, city,
+    name, email, phone, address, country, state, district, city,
     // Teacher fields
     department, designation, joining_date, employment_type,
     qualification, specialization, experience_years, previous_school,
@@ -22,7 +23,7 @@ exports.createTeacher = async (req, res) => {
     is_active
   } = req.body;
 
-  if (!name || !email || !password || !designation) {
+  if (!name || !email || !designation) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -38,10 +39,10 @@ exports.createTeacher = async (req, res) => {
       return res.status(400).json({ error: 'Email already exists' });
     }
 
-    // No need to check employee_id here since it is auto-generated
-
     const userId = uuidv4();
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Auto-generate password
+    const rawPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
     const active = is_active !== undefined ? is_active : true;
 
     // 1. Insert into users table
@@ -74,7 +75,17 @@ exports.createTeacher = async (req, res) => {
     ]);
 
     await connection.commit();
-    res.status(201).json({ message: 'Teacher created successfully', teacher_id: teacherId, user_id: userId });
+    
+    // 5. Send welcome email with credentials (async, don't block response but log error)
+    emailService.sendTeacherWelcomeEmail({ name, email }, rawPassword).catch(err => {
+      console.error('[EMAIL] Background teacher welcome email failed:', err.message);
+    });
+
+    res.status(201).json({ 
+      message: 'Teacher created successfully and credentials sent via email', 
+      teacher_id: teacherId, 
+      user_id: userId 
+    });
   } catch (err) {
     if (connection) await connection.rollback();
     console.error('[createTeacher] Error:', err.message);

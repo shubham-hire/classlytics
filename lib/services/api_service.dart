@@ -3,10 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/department.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_store.dart';
 
 class ApiService {
   // Use 127.0.0.1 for Web/Desktop, 10.0.2.2 for Emulator, or your local LAN IP for physical device
-  static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://192.168.1.9:3000';
+  static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.93.119.116:3000';
 
   /// Exposed for screens that need to build multipart requests directly (e.g. file upload)
   static String get baseUrl => _baseUrl;
@@ -18,6 +19,10 @@ class ApiService {
   static Future<void> initToken() async {
     final prefs = await SharedPreferences.getInstance();
     _authToken = prefs.getString('auth_token');
+    
+    // Also load persisted user data
+    await AuthStore.instance.loadUser();
+    
     if (_authToken != null) {
       debugPrint('ApiService: Token restored from storage.');
     }
@@ -1511,6 +1516,7 @@ class ApiService {
   Future<Map<String, dynamic>> createTeacher(Map<String, dynamic> data, {String? imagePath}) async {
     final uri = Uri.parse('$_baseUrl/api/admin/teachers');
     var request = http.MultipartRequest('POST', uri);
+    request.headers.addAll(_authHeaders);
 
     data.forEach((key, value) {
       if (value != null) {
@@ -1565,6 +1571,7 @@ class ApiService {
   Future<Map<String, dynamic>> updateTeacher(String id, Map<String, dynamic> data, {String? imagePath}) async {
     final uri = Uri.parse('$_baseUrl/api/admin/teachers/$id');
     var request = http.MultipartRequest('PUT', uri);
+    request.headers.addAll(_authHeaders);
 
     data.forEach((key, value) {
       if (value != null) {

@@ -60,7 +60,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
   List<dynamic> _classes = [];
   List<dynamic> _studentsList = [];
 
-  final List<String> _roles = ['Student', 'Teacher', 'Parent', 'Admin'];
+  final List<String> _roles = ['Student', 'Parent', 'Admin'];
   final List<String> _years = [
     'First Year', 'Second Year', 'Third Year', 'Fourth Year',
     '10th Grade', '11th Grade', '12th Grade'
@@ -623,30 +623,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
                       ]),
                     ],
 
-                    // ─── TEACHER NOTE ───
-                    if (_selectedRole == 'Teacher') ...[
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline_rounded, color: Colors.green.shade700),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text(
-                                'Teachers can be assigned to classes after creation via Academic Structure Management.',
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+
 
                     const SizedBox(height: 28),
 

@@ -6,7 +6,7 @@ exports.verifyToken = (req, res, next) => {
   
   if (!authHeader) {
     console.warn(`[AUTH] Access denied: No Authorization header for ${req.method} ${req.path}`);
-    return res.status(401).json({ error: 'Access denied. No token provided.' });
+    return res.status(401).json({ error: 'Access denied. No token provided. from aut' });
   }
 
   const token = authHeader.startsWith('Bearer ') 
