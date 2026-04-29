@@ -45,6 +45,7 @@ import '../../screens/admin/communication/admin_announcements_screen.dart';
 import '../../screens/admin/risk_tracker/admin_risk_tracker_screen.dart';
 
 import '../../screens/admin/user_management/create_dept_admin_screen.dart';
+import '../../screens/admin_fee_structures_screen.dart';
 
 // Department Admin Imports
 import '../../screens/dept_admin/dept_admin_dashboard_screen.dart';
@@ -278,6 +279,10 @@ final GoRouter appRouter = GoRouter(
     ),
 
     // ─── ADMIN FEE ROUTES ───
+    GoRoute(
+      path: '/admin/category-fees',
+      builder: (context, state) => const AdminFeeStructuresScreen(),
+    ),
     GoRoute(
       path: '/admin/fees/structure',
       builder: (context, state) => const FeeStructureListScreen(),

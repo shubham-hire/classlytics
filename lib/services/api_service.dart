@@ -241,11 +241,10 @@ class ApiService {
     required String currentYear,
     required String dob,
     required String rollNo,
+    required String category,
+    int? departmentId,
   }) async {
-    final url = Uri.parse('$_baseUrl/class/create-with-parent'); // Should be /class/create-with-parent or maybe /students ?
-    // Wait, in studentRoutes.js we use router.post('/create-with-parent')
-    // And in app.js, what is the prefix? Wait, I should check app.js to be absolutely sure.
-    // In addStudent, the url is $_baseUrl/class/add
+    final url = Uri.parse('$_baseUrl/class/create-with-parent');
     try {
       final response = await http.post(
         url,
@@ -264,9 +263,11 @@ class ApiService {
           'city': city,
           'classId': classId,
           'dept': dept,
+          'department_id': departmentId,
           'currentYear': currentYear,
           'dob': dob,
           'rollNo': rollNo,
+          'category': category,
         }),
       );
       if (response.statusCode != 201) throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to add student with parent');
@@ -615,6 +616,77 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error verifying payment: $e');
+    }
+  }
+
+  // ==============================
+  // DEPARTMENTS
+  // ==============================
+
+  Future<List<dynamic>> fetchDepartments() async {
+    final url = Uri.parse('$_baseUrl/api/departments');
+    try {
+      final response = await http.get(url, headers: _authHeaders);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['departments'] as List<dynamic>? ?? [];
+      }
+      throw Exception('Failed to load departments');
+    } catch (e) {
+      throw Exception('Error fetching departments: $e');
+    }
+  }
+
+  // ==============================
+  // CATEGORY FEE STRUCTURES
+  // ==============================
+
+  Future<void> createCategoryFeeStructure({
+    required int departmentId,
+    required String year,
+    required String category,
+    required double amount,
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/admin/create-fee-structure');
+    try {
+      final response = await http.post(
+        url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'department_id': departmentId,
+          'year': year,
+          'category': category,
+          'amount': amount,
+        }),
+      );
+      if (response.statusCode != 201) {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to create fee structure');
+      }
+    } catch (e) {
+      throw Exception('Error creating fee structure: $e');
+    }
+  }
+
+  Future<List<dynamic>> fetchCategoryFeeStructures() async {
+    final url = Uri.parse('$_baseUrl/api/admin/fee-structures');
+    try {
+      final response = await http.get(url, headers: _authHeaders);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['feeStructures'] as List<dynamic>;
+      }
+      throw Exception('Failed to fetch fee structures');
+    } catch (e) {
+      throw Exception('Error fetching fee structures: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchStudentCategoryFees({String? childId}) async {
+    final url = Uri.parse('$_baseUrl/api/student/my-fees${childId != null ? '?childId=$childId' : ''}');
+    try {
+      final response = await http.get(url, headers: _authHeaders);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch student fees');
+    } catch (e) {
+      throw Exception('Error fetching student fees: $e');
     }
   }
 

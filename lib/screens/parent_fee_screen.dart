@@ -17,6 +17,7 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
   bool _loading = true;
   List<StudentFeeAssignment> _assignments = [];
   Map<String, dynamic> _summary = {};
+  Map<String, dynamic>? _categoryFee;
   String? _error;
   
   late Razorpay _razorpay;
@@ -83,11 +84,19 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final data = await _api.fetchChildFees(_childId);
+      Map<String, dynamic>? catFee;
+      try {
+        catFee = await _api.fetchStudentCategoryFees(childId: _childId);
+      } catch (e) {
+        // Ignored, might not exist
+      }
+
       setState(() {
         _assignments = (data['assignments'] as List)
             .map((e) => StudentFeeAssignment.fromJson(e))
             .toList();
         _summary = data['summary'] ?? {};
+        _categoryFee = catFee?['status'] == 'NO_FEE_ASSIGNED' ? null : catFee;
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -130,6 +139,12 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
                       children: [
                         _buildSummaryCards(),
                         const SizedBox(height: 24),
+                        if (_categoryFee != null) ...[
+                          _buildSectionHeader('Category Fee Structure', 1),
+                          const SizedBox(height: 12),
+                          _buildCategoryFeeCard(_categoryFee!),
+                          const SizedBox(height: 24),
+                        ],
                         if (_assignments.isEmpty)
                           _buildNoFees()
                         else ...[
@@ -243,6 +258,85 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
               Text('₹${_fmt(amount)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryFeeCard(Map<String, dynamic> fee) {
+    final status = fee['status'] ?? 'PENDING';
+    final total = double.tryParse(fee['total_amount']?.toString() ?? '0') ?? 0;
+    final paid = double.tryParse(fee['paid_amount']?.toString() ?? '0') ?? 0;
+    final pending = total - paid;
+    final progress = total > 0 ? (paid / total).clamp(0.0, 1.0) : 0.0;
+    
+    Color statusColor = Colors.orange;
+    if (status == 'PAID') statusColor = Colors.green;
+    else if (status == 'PARTIAL') statusColor = Colors.blue;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.blueGrey.shade100),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Academic Category Fee', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      const SizedBox(height: 3),
+                      Text('${fee['department_name'] ?? 'Dept'} · ${fee['year']} · ${fee['category']}',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                  child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: Colors.grey.shade100,
+                    valueColor: AlwaysStoppedAnimation(statusColor),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _amountLabel('Total', total, const Color(0xFF64748B)),
+                    _amountLabel('Paid', paid, const Color(0xFF10B981)),
+                    _amountLabel('Pending', pending, const Color(0xFFEF4444)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // We could add a "Pay Now" button here specifically for category fees in the future
         ],
       ),
     );

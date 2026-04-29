@@ -60,7 +60,7 @@ exports.getStudentsByClass = async (req, res) => {
 };
 
 exports.addStudent = async (req, res) => {
-  const { name, email, phone, address, country, state, district, city, classId, rollNo, dob, currentYear, dept } = req.body;
+  const { name, email, phone, address, country, state, district, city, classId, rollNo, dob, currentYear, dept, department_id, category } = req.body;
   
   if (!name || !email) {
     return res.status(400).json({ error: 'name and email are required' });
@@ -82,11 +82,26 @@ exports.addStudent = async (req, res) => {
       [userId, name, email, hashedPassword, 'Student', phone || null, address || null, country || null, state || null, district || null, city || null]
     );
 
+    const studentCat = category || 'OPEN';
     const studentRollNo = normalizeRollNo(rollNo);
     await connection.execute(
-      'INSERT INTO students (id, user_id, roll_no, dept, current_year, dob) VALUES (?, ?, ?, ?, ?, ?)',
-      [studentId, userId, studentRollNo, dept || 'General', currentYear || '1st Year', dob || null]
+      'INSERT INTO students (id, user_id, roll_no, dept, current_year, dob, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [studentId, userId, studentRollNo, dept || 'General', currentYear || '1st Year', dob || null, studentCat]
     );
+
+    // Auto-assign category fee
+    if (department_id) {
+      const [structures] = await connection.execute(
+        'SELECT id, amount FROM category_fee_structures WHERE department_id = ? AND year = ? AND category = ?',
+        [department_id, currentYear || '1st Year', studentCat]
+      );
+      if (structures.length > 0) {
+        await connection.execute(
+          'INSERT INTO student_category_fees (student_id, fee_structure_id, total_amount, status) VALUES (?, ?, ?, "PENDING")',
+          [studentId, structures[0].id, structures[0].amount]
+        );
+      }
+    }
 
     const classRollNo = await enrollStudentInClass(connection, classId, studentId, studentRollNo);
     await connection.commit();
@@ -271,7 +286,7 @@ exports.getStudentById = async (req, res) => {
 
 
 exports.createWithParent = async (req, res) => {
-  const { studentName, studentEmail, parentName, relation, parentPhone, parentEmail, classId, dept, currentYear, country, state, city, address, dob, rollNo } = req.body;
+  const { studentName, studentEmail, parentName, relation, parentPhone, parentEmail, classId, dept, department_id, currentYear, country, state, city, address, dob, rollNo, category } = req.body;
 
   if (!studentName || !parentName || !parentPhone || !parentEmail) {
     return res.status(400).json({ error: 'Required fields missing' });
@@ -343,11 +358,26 @@ exports.createWithParent = async (req, res) => {
     );
 
     // 5. Create Student Record
+    const studentCat = category || 'OPEN';
     const studentRollNo = normalizeRollNo(rollNo);
     await connection.execute(
-      'INSERT INTO students (id, user_id, roll_no, dept, current_year, dob, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [studentId, studentUserId, studentRollNo, dept || 'General', currentYear || '1st Year', dob || null, parentId]
+      'INSERT INTO students (id, user_id, roll_no, dept, current_year, dob, parent_id, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [studentId, studentUserId, studentRollNo, dept || 'General', currentYear || '1st Year', dob || null, parentId, studentCat]
     );
+
+    // Auto-assign category fee
+    if (department_id) {
+      const [structures] = await connection.execute(
+        'SELECT id, amount FROM category_fee_structures WHERE department_id = ? AND year = ? AND category = ?',
+        [department_id, currentYear || '1st Year', studentCat]
+      );
+      if (structures.length > 0) {
+        await connection.execute(
+          'INSERT INTO student_category_fees (student_id, fee_structure_id, total_amount, status) VALUES (?, ?, ?, "PENDING")',
+          [studentId, structures[0].id, structures[0].amount]
+        );
+      }
+    }
 
     // 6. Update Parent Record with Student ID now that Student exists
     await connection.execute('UPDATE parents SET child_id = ? WHERE id = ?', [studentId, parentId]);
@@ -410,6 +440,34 @@ exports.createWithParent = async (req, res) => {
       connection.release();
     }
     console.error('Error creating student with parent:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─── GET /api/student/my-fees ───
+exports.getMyFees = async (req, res) => {
+  let studentId = req.user.studentId || req.user.id; // Depending on how user is attached
+  
+  if (req.user.role === 'Parent' && req.query.childId) {
+    studentId = req.query.childId;
+  }
+
+  try {
+    const [rows] = await db.execute(`
+      SELECT f.total_amount, f.paid_amount, f.status, s.year, s.category, d.name as department_name
+      FROM student_category_fees f
+      JOIN category_fee_structures s ON f.fee_structure_id = s.id
+      LEFT JOIN departments d ON s.department_id = d.id
+      WHERE f.student_id = ?
+    `, [studentId]);
+
+    if (rows.length === 0) {
+      return res.status(200).json({ total_amount: 0, paid_amount: 0, status: 'NO_FEE_ASSIGNED' });
+    }
+
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error('[Student getMyFees] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };

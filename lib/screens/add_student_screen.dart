@@ -34,21 +34,17 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   String? _selectedStateCode;
   String? _selectedCity;
   String _selectedCountry = 'India';
+  String? _selectedCategory;
 
   List<dynamic> _states = [];
   List<dynamic> _cities = [];
   List<dynamic> _classes = [];
+  List<dynamic> _departmentsData = [];
   bool _isLoadingGeo = false;
   String? _geoError;
 
-  final List<String> _departments = [
-    'Computer Science',
-    'Information Technology',
-    'Mechanical Engineering',
-    'Electronics & TC',
-    'Civil Engineering',
-    'Applied Sciences'
-  ];
+  final List<String> _categories = ['OPEN', 'SC_ST', 'EWS'];
+
 
   final List<String> _academicYears = [
     'First Year',
@@ -64,8 +60,18 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     super.initState();
     _selectedClassId = widget.classId == 'GLOBAL' ? null : widget.classId;
     _loadStates();
+    _loadDepartments();
     if (widget.classId == 'GLOBAL') {
       _loadClasses();
+    }
+  }
+
+  Future<void> _loadDepartments() async {
+    try {
+      final depts = await _apiService.fetchDepartments();
+      setState(() => _departmentsData = depts);
+    } catch (e) {
+      debugPrint('Error loading departments: $e');
     }
   }
 
@@ -157,8 +163,26 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 _buildClassDropdown(),
 
               _buildTextField(_rollNoController, 'Roll Number', Icons.numbers, 'Enter roll number'),
-              _buildDropdown('Department', _departments, _selectedDept, (val) => setState(() => _selectedDept = val)),
+              
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedDept,
+                  decoration: InputDecoration(
+                    labelText: 'Department',
+                    prefixIcon: const Icon(Icons.business, color: Color(0xFF1E3A8A)),
+                    filled: true,
+                    fillColor: Colors.blueGrey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                  items: _departmentsData.map((d) => DropdownMenuItem(value: d['name'].toString(), child: Text(d['name'].toString()))).toList(),
+                  onChanged: (val) => setState(() => _selectedDept = val),
+                  validator: (val) => val == null ? 'Required' : null,
+                ),
+              ),
+
               _buildDropdown('Current Year', _academicYears, _selectedYear, (val) => setState(() => _selectedYear = val)),
+              _buildDropdown('Category', _categories, _selectedCategory, (val) => setState(() => _selectedCategory = val)),
               
               const SizedBox(height: 32),
               const Text('Address & Location', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
@@ -390,7 +414,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         dob: _dobController.text,
         currentYear: _selectedYear!,
         dept: _selectedDept!,
+        departmentId: _departmentsData.firstWhere((d) => d['name'] == _selectedDept, orElse: () => {'id': null})['id'] as int?,
         rollNo: _rollNoController.text,
+        category: _selectedCategory ?? 'OPEN',
       );
 
       if (mounted) {

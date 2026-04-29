@@ -90,6 +90,7 @@ app.use('/chat', chatRoutes);
 app.use('/parent', parentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/student', require('./routes/studentPortalRoutes'));
 
 app.use('/dept-admin', departmentAdminRoutes);
 app.use('/api/department-admin', departmentAdminRoutes);

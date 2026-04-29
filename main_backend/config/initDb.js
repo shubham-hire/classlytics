@@ -64,6 +64,7 @@ const initDb = async () => {
             { table: 'parents', col: 'email', type: 'VARCHAR(255)' },
             { table: 'parents', col: 'password', type: 'VARCHAR(255)' },
             { table: 'parents', col: 'occupation', type: 'VARCHAR(100)' },
+            { table: 'students', col: 'category', type: "ENUM('OPEN','SC_ST','EWS') NOT NULL DEFAULT 'OPEN'" },
         ];
 
         // Ensure class_enrollments has roll_no column
@@ -145,6 +146,37 @@ const initDb = async () => {
             )`);
             console.log('✅ [DB MIGRATION] student_fee_assignments table ensured.');
         } catch (e) { /* already exists */ }
+
+        // Ensure category_fee_structures table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS category_fee_structures (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                department_id INT,
+                year VARCHAR(20),
+                category ENUM('OPEN','SC_ST','EWS'),
+                amount DECIMAL(10,2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (department_id) REFERENCES departments(id),
+                UNIQUE KEY unique_dept_year_category (department_id, year, category)
+            )`);
+            console.log('✅ [DB MIGRATION] category_fee_structures table ensured.');
+        } catch (e) { console.error('Error creating category_fee_structures:', e); }
+
+        // Ensure student_category_fees table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS student_category_fees (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id VARCHAR(50) NOT NULL,
+                fee_structure_id INT,
+                total_amount DECIMAL(10,2),
+                paid_amount DECIMAL(10,2) DEFAULT 0.00,
+                status ENUM('PENDING','PARTIAL','PAID') DEFAULT 'PENDING',
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                FOREIGN KEY (fee_structure_id) REFERENCES category_fee_structures(id) ON DELETE RESTRICT,
+                UNIQUE KEY unique_student_cat_fee (student_id, fee_structure_id)
+            )`);
+            console.log('✅ [DB MIGRATION] student_category_fees table ensured.');
+        } catch (e) { console.error('Error creating student_category_fees:', e); }
 
         // ─── DEPARTMENT_ADMIN Migration ───────────────────────────────────────
         // Ensure departments table exists

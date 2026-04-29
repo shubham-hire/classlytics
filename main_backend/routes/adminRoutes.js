@@ -42,4 +42,8 @@ router.post('/create-department-admin', adminController.createDepartmentAdmin);
 router.get('/department-admins', adminController.getDepartmentAdmins);
 router.delete('/department-admin/:id', adminController.deleteDepartmentAdmin);
 
+// Category-Based Fee Structures
+router.post('/create-fee-structure', adminController.createFeeStructure);
+router.get('/fee-structures', adminController.getFeeStructures);
+
 module.exports = router;

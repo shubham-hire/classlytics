@@ -563,6 +563,29 @@ exports.getDepartmentAdmins = async (req, res) => {
   }
 };
 
+    });
+  } catch (err) {
+    console.error('[Admin createDepartmentAdmin] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getDepartmentAdmins = async (req, res) => {
+  try {
+    const query = `
+      SELECT u.id, u.name, u.email, u.department_id, d.name AS department_name
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.role = 'DEPARTMENT_ADMIN'
+    `;
+    const [rows] = await db.execute(query);
+    res.status(200).json({ departmentAdmins: rows });
+  } catch (err) {
+    console.error('[Admin getDepartmentAdmins] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.deleteDepartmentAdmin = async (req, res) => {
   const { id } = req.params;
   try {
@@ -570,6 +593,51 @@ exports.deleteDepartmentAdmin = async (req, res) => {
     res.status(200).json({ message: 'Department Admin deleted successfully' });
   } catch (err) {
     console.error('[Admin deleteDepartmentAdmin] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─── FEE STRUCTURES (Category-Based) ───
+exports.createFeeStructure = async (req, res) => {
+  const { department_id, year, category, amount } = req.body;
+  
+  if (!department_id || !year || !category || amount === undefined) {
+    return res.status(400).json({ error: 'department_id, year, category, amount are required' });
+  }
+
+  try {
+    const [existing] = await db.execute(
+      'SELECT id FROM category_fee_structures WHERE department_id = ? AND year = ? AND category = ?',
+      [department_id, year, category]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'Fee structure for this combination already exists' });
+    }
+
+    const [result] = await db.execute(
+      'INSERT INTO category_fee_structures (department_id, year, category, amount) VALUES (?, ?, ?, ?)',
+      [department_id, year, category, amount]
+    );
+
+    res.status(201).json({ message: 'Fee structure created successfully', id: result.insertId });
+  } catch (err) {
+    console.error('[Admin createFeeStructure] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getFeeStructures = async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT f.*, d.name as department_name 
+      FROM category_fee_structures f
+      LEFT JOIN departments d ON f.department_id = d.id
+      ORDER BY f.created_at DESC
+    `);
+    res.status(200).json({ feeStructures: rows });
+  } catch (err) {
+    console.error('[Admin getFeeStructures] Error:', err);
     res.status(500).json({ error: err.message });
   }
 };
