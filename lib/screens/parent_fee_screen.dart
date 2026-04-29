@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/student_fee_assignment.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class ParentFeeScreen extends StatefulWidget {
   const ParentFeeScreen({super.key});
@@ -17,6 +18,9 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
   List<StudentFeeAssignment> _assignments = [];
   Map<String, dynamic> _summary = {};
   String? _error;
+  
+  late Razorpay _razorpay;
+  StudentFeeAssignment? _currentProcessingAssignment;
 
   String get _childId => AuthStore.instance.childId;
   String get _childName => (AuthStore.instance.get('child_name') ?? 'Your Child').toString();
@@ -24,7 +28,51 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    try {
+      await _api.verifyPayment(
+        response.orderId!,
+        response.paymentId!,
+        response.signature!,
+      );
+      
+      if (_currentProcessingAssignment != null) {
+         await _api.recordFeePayment(
+           _currentProcessingAssignment!.id,
+           _currentProcessingAssignment!.pendingAmount,
+           'Online',
+           note: 'Razorpay Payment ID: ${response.paymentId}',
+         );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Successful!'), backgroundColor: Colors.green));
+        _load();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification Failed: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red));
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('External Wallet: ${response.walletName}')));
   }
 
   Future<void> _load() async {
@@ -317,7 +365,7 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
-                    onPressed: () => _showSimulatePayment(a),
+                    onPressed: () => _initiateRazorpayPayment(a),
                     icon: const Icon(Icons.payment_rounded, size: 16),
                     label: const Text('Pay Now', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                   ),
@@ -434,93 +482,41 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
     ),
   );
 
-  Future<void> _showSimulatePayment(StudentFeeAssignment a) async {
-    final amountController = TextEditingController(text: a.pendingAmount.toStringAsFixed(2));
-    final formKey = GlobalKey<FormState>();
-    bool processing = false;
+  Future<void> _initiateRazorpayPayment(StudentFeeAssignment a) async {
+    try {
+      setState(() => _currentProcessingAssignment = a);
+      
+      final parentId = AuthStore.instance.get('id')?.toString() ?? 'unknown_parent';
+      final studentId = _childId;
+      
+      // 1. Create order on backend
+      final orderResponse = await _api.createPaymentOrder(parentId, studentId, a.pendingAmount);
+      
+      final orderId = orderResponse['order_id'];
+      final keyId = orderResponse['key_id'];
+      final amountInPaise = (a.pendingAmount * 100).toInt();
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, bSet) {
-        return Container(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 24, right: 24, top: 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Simulate Payment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  Text('Paying for ${a.structureTitle}', style: const TextStyle(color: Color(0xFF64748B))),
-                  const SizedBox(height: 24),
-                  
-                  TextFormField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Amount (₹)',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18),
-                    ),
-                    validator: (v) {
-                      final val = double.tryParse(v ?? '');
-                      if (val == null || val <= 0) return 'Enter a valid amount';
-                      if (val > a.pendingAmount) return 'Cannot exceed pending amount (₹${a.pendingAmount})';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E3A8A),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: processing ? null : () async {
-                        if (!formKey.currentState!.validate()) return;
-                        bSet(() => processing = true);
-                        try {
-                          await _api.recordFeePayment(
-                            a.id, 
-                            double.parse(amountController.text), 
-                            'Online', // Simulating parent paying online
-                            note: 'Simulated Parent Payment'
-                          );
-                          if (mounted) {
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Successful!'), backgroundColor: Colors.green));
-                            _load();
-                          }
-                        } catch (e) {
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-                          bSet(() => processing = false);
-                        }
-                      },
-                      child: processing 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Confirm Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-          ),
-        );
-      }),
-    );
+      // 2. Open Razorpay checkout
+      var options = {
+        'key': keyId,
+        'amount': amountInPaise,
+        'name': 'Classlytics Education',
+        'order_id': orderId,
+        'description': 'Fee Payment for ${a.structureTitle}',
+        'prefill': {
+          'contact': AuthStore.instance.get('phone')?.toString() ?? '9999999999',
+          'email': AuthStore.instance.get('email')?.toString() ?? 'parent@example.com'
+        },
+        'theme': {
+          'color': '#1E3A8A'
+        }
+      };
+
+      _razorpay.open(options);
+
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error initiating payment: $e'), backgroundColor: Colors.red));
+    }
   }
 
   Future<void> _showPaymentHistory(int assignmentId) async {

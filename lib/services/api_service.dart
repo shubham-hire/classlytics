@@ -576,6 +576,49 @@ class ApiService {
   }
 
   // ==============================
+  // RAZORPAY INTEGRATION
+  // ==============================
+
+  Future<Map<String, dynamic>> createPaymentOrder(String parentId, String studentId, double amount) async {
+    final url = Uri.parse('$_baseUrl/api/payment/create-order');
+    try {
+      final response = await http.post(
+        url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'parent_id': parentId,
+          'student_id': studentId,
+          'amount': amount,
+        }),
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to create payment order: ${response.body}');
+    } catch (e) {
+      throw Exception('Error creating payment order: $e');
+    }
+  }
+
+  Future<void> verifyPayment(String orderId, String paymentId, String signature) async {
+    final url = Uri.parse('$_baseUrl/api/payment/verify');
+    try {
+      final response = await http.post(
+        url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'razorpay_order_id': orderId,
+          'razorpay_payment_id': paymentId,
+          'razorpay_signature': signature,
+        }),
+      );
+      if (response.statusCode != 200) {
+        throw Exception(jsonDecode(response.body)['message'] ?? 'Payment verification failed');
+      }
+    } catch (e) {
+      throw Exception('Error verifying payment: $e');
+    }
+  }
+
+  // ==============================
   // BEHAVIOR TRACKING
   // ==============================
 
@@ -1859,6 +1902,100 @@ class ApiService {
     if (response.statusCode != 200) {
       throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to delete');
     }
+  }
+
+  // ==============================
+  // DEPT ADMIN — STATISTICS DASHBOARD
+  // ==============================
+
+  Future<Map<String, dynamic>> deptAdminGetStats() async {
+    final url = Uri.parse('$_baseUrl/api/department-admin/department-stats');
+    try {
+      final response = await http.get(url, headers: _authHeaders);
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception('Failed to fetch department stats');
+    } catch (e) {
+      throw Exception('Error fetching department stats: $e');
+    }
+  }
+
+  // ==============================
+  // DEPT ADMIN — TEACHERS (for dropdowns)
+  // ==============================
+
+  Future<List<dynamic>> deptAdminGetTeachers() async {
+    final url = Uri.parse('$_baseUrl/api/department-admin/teachers');
+    try {
+      final response = await http.get(url, headers: _authHeaders);
+      if (response.statusCode == 200) return jsonDecode(response.body) as List<dynamic>;
+      throw Exception('Failed to fetch teachers');
+    } catch (e) {
+      throw Exception('Error fetching teachers: $e');
+    }
+  }
+
+  // ==============================
+  // DEPT ADMIN — STUDENTS BY YEAR
+  // ==============================
+
+  Future<List<dynamic>> deptAdminGetStudentsByYear({String? year}) async {
+    final params = <String, String>{};
+    if (year != null && year.isNotEmpty) params['year'] = year;
+    final uri = Uri.parse('$_baseUrl/api/department-admin/students-by-year')
+        .replace(queryParameters: params.isEmpty ? null : params);
+    try {
+      final response = await http.get(uri, headers: _authHeaders);
+      if (response.statusCode == 200) return jsonDecode(response.body) as List<dynamic>;
+      throw Exception('Failed to fetch students by year');
+    } catch (e) {
+      throw Exception('Error fetching students by year: $e');
+    }
+  }
+
+  // ==============================
+  // DEPT ADMIN — ENHANCED CLASS CREATION
+  // ==============================
+
+  Future<Map<String, dynamic>> deptAdminCreateClassEnhanced({
+    required String name,
+    required String year,
+    required String division,
+    String? teacherId,
+    List<String>? studentIds,
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/department-admin/create-class');
+    final response = await http.post(url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          'name': name,
+          'year': year,
+          'division': division,
+          if (teacherId != null) 'teacher_id': teacherId,
+          if (studentIds != null) 'student_ids': studentIds,
+        }));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create class');
+  }
+
+  // ==============================
+  // DEPT ADMIN — ASSIGN ROLL NUMBERS
+  // ==============================
+
+  Future<Map<String, dynamic>> deptAdminAssignRollNumbers({
+    String? classId,
+    int? divisionId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/department-admin/assign-roll-numbers');
+    final response = await http.post(url,
+        headers: _authHeaders,
+        body: jsonEncode({
+          if (classId != null) 'class_id': classId,
+          if (divisionId != null) 'division_id': divisionId,
+        }));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) return data;
+    throw Exception(data['error'] ?? 'Failed to assign roll numbers');
   }
 
   // ==============================

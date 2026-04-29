@@ -200,6 +200,19 @@ class _DeptAdminManageDivisionsScreenState
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.format_list_numbered_rounded, color: _purple),
+                                    tooltip: 'Auto-assign Roll Numbers',
+                                    onPressed: () async {
+                                      try {
+                                        await _api.deptAdminAssignRollNumbers(divisionId: div['id']);
+                                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Roll numbers assigned!'), backgroundColor: Colors.green));
+                                      } catch (e) {
+                                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 4),
                                   OutlinedButton.icon(
                                     onPressed: () => context.go(
                                         '/dept-admin/students?divisionId=${div['id']}&divisionName=${Uri.encodeComponent('Division ${div['division_name']}')}'),

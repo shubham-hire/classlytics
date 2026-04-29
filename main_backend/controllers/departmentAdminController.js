@@ -397,3 +397,322 @@ exports.deleteTimetableEntry = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ===========================================================================
+// DEPARTMENT STATISTICS DASHBOARD
+// ===========================================================================
+
+// GET /dept-admin/department-stats
+exports.getDepartmentStats = async (req, res) => {
+  try {
+    const department_id = req.user.department_id || await getAdminDeptId(req.user.id);
+    
+    if (!department_id && req.user.role !== 'ADMIN' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'No department assigned to this admin.' });
+    }
+
+    const deptId = (req.user.role === 'ADMIN' || req.user.role === 'Admin')
+      ? (req.query.department_id || department_id)
+      : department_id;
+
+    if (!deptId) return res.status(400).json({ error: 'department_id required' });
+
+    // Execute all queries in parallel for better performance
+    const [
+      [totalStudents],
+      [studentsByYear],
+      [totalTeachers],
+      [classTeachers],
+      [totalClasses],
+      [totalDivisions],
+      [deptInfo]
+    ] = await Promise.all([
+      db.execute('SELECT COUNT(DISTINCT s.id) AS total FROM students s JOIN divisions d ON s.division_id = d.id JOIN classes c ON d.class_id = c.id WHERE c.department_id = ?', [deptId]),
+      db.execute('SELECT s.current_year AS year_label, COUNT(*) AS count FROM students s JOIN divisions d ON s.division_id = d.id JOIN classes c ON d.class_id = c.id WHERE c.department_id = ? GROUP BY s.current_year ORDER BY s.current_year', [deptId]),
+      db.execute('SELECT COUNT(DISTINCT u.id) AS total FROM users u WHERE u.department_id = ? AND u.role = "Teacher"', [deptId]),
+      db.execute('SELECT COUNT(DISTINCT c.teacher_id) AS total FROM classes c WHERE c.department_id = ? AND c.teacher_id IS NOT NULL', [deptId]),
+      db.execute('SELECT COUNT(*) AS total FROM classes WHERE department_id = ?', [deptId]),
+      db.execute('SELECT COUNT(*) AS total FROM divisions d JOIN classes c ON d.class_id = c.id WHERE c.department_id = ?', [deptId]),
+      db.execute('SELECT name FROM departments WHERE id = ?', [deptId])
+    ]);
+
+    const students_by_year = {};
+    for (const row of studentsByYear) {
+      students_by_year[row.year_label || 'Unknown'] = row.count;
+    }
+
+    res.status(200).json({
+      department_id: parseInt(deptId),
+      department_name: deptInfo.length > 0 ? deptInfo[0].name : 'Unknown',
+      total_students: totalStudents[0].total,
+      students_by_year,
+      total_teachers: Math.max(totalTeachers[0].total, classTeachers[0].total),
+      total_classes: totalClasses[0].total,
+      total_divisions: totalDivisions[0].total,
+    });
+  } catch (err) {
+    console.error('[DEPT_ADMIN getDepartmentStats] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ===========================================================================
+// TEACHERS BY DEPARTMENT (for dropdowns)
+// ===========================================================================
+
+// GET /dept-admin/teachers
+exports.getTeachersByDepartment = async (req, res) => {
+  try {
+    const department_id = await getAdminDeptId(req.user.id);
+    if (!department_id && req.user.role !== 'ADMIN' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'No department assigned.' });
+    }
+
+    const deptId = (req.user.role === 'ADMIN' || req.user.role === 'Admin')
+      ? (req.query.department_id || department_id)
+      : department_id;
+
+    // Get teachers assigned to this department + unassigned teachers
+    const [rows] = await db.execute(`
+      SELECT u.id, u.name, u.email, u.phone, u.dept
+      FROM users u
+      WHERE u.role = 'Teacher'
+        AND (u.department_id = ? OR u.department_id IS NULL)
+      ORDER BY u.name
+    `, [deptId]);
+
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[DEPT_ADMIN getTeachersByDepartment] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ===========================================================================
+// STUDENTS BY DEPARTMENT + YEAR (for multi-select during class creation)
+// ===========================================================================
+
+// GET /dept-admin/students-by-year?year=1st Year
+exports.getStudentsByDepartmentYear = async (req, res) => {
+  try {
+    const department_id = await getAdminDeptId(req.user.id);
+    if (!department_id && req.user.role !== 'ADMIN' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'No department assigned.' });
+    }
+
+    const deptId = (req.user.role === 'ADMIN' || req.user.role === 'Admin')
+      ? (req.query.department_id || department_id)
+      : department_id;
+
+    const { year } = req.query;
+
+    let query = `
+      SELECT s.id AS student_id, u.name, u.email, s.current_year, s.roll_no, s.division_id
+      FROM students s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.dept IN (SELECT name FROM departments WHERE id = ?)
+    `;
+    const params = [deptId];
+
+    if (year) {
+      query += ' AND s.current_year = ?';
+      params.push(year);
+    }
+
+    query += ' ORDER BY u.name';
+
+    const [rows] = await db.execute(query, params);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error('[DEPT_ADMIN getStudentsByDepartmentYear] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ===========================================================================
+// ENHANCED CLASS CREATION (with year, division, teacher, student assignment)
+// ===========================================================================
+
+// POST /dept-admin/create-class
+exports.createClassEnhanced = async (req, res) => {
+  const { name, year, division, teacher_id, student_ids } = req.body;
+
+  if (!name) return res.status(400).json({ error: 'Class name is required' });
+  if (!year) return res.status(400).json({ error: 'Year is required' });
+  if (!division) return res.status(400).json({ error: 'Division is required' });
+
+  try {
+    let department_id = req.body.department_id;
+
+    if (req.user.role === 'DEPARTMENT_ADMIN') {
+      department_id = await getAdminDeptId(req.user.id);
+      if (!department_id) return res.status(403).json({ error: 'Admin has no assigned department' });
+    }
+
+    if (!department_id) return res.status(400).json({ error: 'department_id is required' });
+
+    let connection;
+    try {
+      connection = await db.getConnection();
+      await connection.beginTransaction();
+
+      // 1. Create the class
+      const classId = uuidv4();
+      const section = `${year}-${division}`; // e.g. "1st Year-A"
+      await connection.execute(
+        'INSERT INTO classes (id, name, section, teacher_id, department_id) VALUES (?, ?, ?, ?, ?)',
+        [classId, name, section, teacher_id || null, department_id]
+      );
+
+      // 2. Create the division
+      const [divResult] = await connection.execute(
+        'INSERT INTO divisions (class_id, division_name) VALUES (?, ?)',
+        [classId, division]
+      );
+      const divisionId = divResult.insertId;
+
+      // 3. Assign students to the division (if provided)
+      let assignedCount = 0;
+      if (student_ids && Array.isArray(student_ids) && student_ids.length > 0) {
+        for (const studentId of student_ids) {
+          // Update student's division_id
+          await connection.execute(
+            'UPDATE students SET division_id = ? WHERE id = ?',
+            [divisionId, studentId]
+          );
+
+          // Also create class enrollment
+          try {
+            await connection.execute(
+              'INSERT IGNORE INTO class_enrollments (class_id, student_id) VALUES (?, ?)',
+              [classId, studentId]
+            );
+          } catch (_) { /* ignore duplicates */ }
+
+          assignedCount++;
+        }
+      }
+
+      await connection.commit();
+      connection.release();
+
+      res.status(201).json({
+        message: 'Class created successfully',
+        classId,
+        name,
+        section,
+        division,
+        divisionId,
+        teacher_id: teacher_id || null,
+        department_id,
+        students_assigned: assignedCount,
+      });
+    } catch (innerErr) {
+      if (connection) { await connection.rollback(); connection.release(); }
+      throw innerErr;
+    }
+  } catch (err) {
+    console.error('[DEPT_ADMIN createClassEnhanced] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ===========================================================================
+// AUTO-ASSIGN ROLL NUMBERS
+// ===========================================================================
+
+// POST /dept-admin/assign-roll-numbers
+exports.assignRollNumbers = async (req, res) => {
+  const { class_id, division_id } = req.body;
+
+  if (!class_id && !division_id) {
+    return res.status(400).json({ error: 'class_id or division_id is required' });
+  }
+
+  try {
+    // Verify ownership
+    if (class_id) {
+      const [classes] = await db.execute('SELECT department_id FROM classes WHERE id = ?', [class_id]);
+      if (classes.length === 0) return res.status(404).json({ error: 'Class not found' });
+      if (!(await verifyDeptOwnership(req, res, classes[0].department_id))) return;
+    }
+
+    // Build the student query
+    let studentQuery, studentParams;
+
+    if (division_id) {
+      studentQuery = `
+        SELECT s.id AS student_id, u.name
+        FROM students s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.division_id = ?
+        ORDER BY u.name ASC
+      `;
+      studentParams = [division_id];
+    } else {
+      studentQuery = `
+        SELECT s.id AS student_id, u.name
+        FROM students s
+        JOIN users u ON s.user_id = u.id
+        JOIN divisions d ON s.division_id = d.id
+        WHERE d.class_id = ?
+        ORDER BY u.name ASC
+      `;
+      studentParams = [class_id];
+    }
+
+    const [students] = await db.execute(studentQuery, studentParams);
+
+    if (students.length === 0) {
+      return res.status(404).json({ error: 'No students found in this class/division' });
+    }
+
+    // Assign roll numbers sequentially (alphabetical order)
+    let connection;
+    try {
+      connection = await db.getConnection();
+      await connection.beginTransaction();
+
+      const rollAssignments = [];
+      for (let i = 0; i < students.length; i++) {
+        const rollNo = i + 1;
+        const studentId = students[i].student_id;
+
+        // Update roll_no in global students table
+        await connection.execute(
+          'UPDATE students SET roll_no = ? WHERE id = ?',
+          [rollNo, studentId]
+        );
+
+        // Update roll_no in class_enrollments if exists
+        if (class_id) {
+          await connection.execute(
+            'UPDATE class_enrollments SET roll_no = ? WHERE student_id = ? AND class_id = ?',
+            [rollNo, studentId, class_id]
+          );
+        }
+
+        rollAssignments.push({
+          student_id: studentId,
+          name: students[i].name,
+          roll_no: rollNo,
+        });
+      }
+
+      await connection.commit();
+      connection.release();
+
+      res.status(200).json({
+        message: `Roll numbers assigned to ${students.length} students`,
+        total: students.length,
+        assignments: rollAssignments,
+      });
+    } catch (innerErr) {
+      if (connection) { await connection.rollback(); connection.release(); }
+      throw innerErr;
+    }
+  } catch (err) {
+    console.error('[DEPT_ADMIN assignRollNumbers] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -54,6 +54,9 @@ import '../../screens/dept_admin/dept_admin_manage_divisions_screen.dart';
 import '../../screens/dept_admin/dept_admin_students_screen.dart';
 import '../../screens/dept_admin/dept_admin_timetable_screen.dart';
 import '../../screens/dept_admin/dept_admin_profile_screen.dart';
+import '../../screens/dept_admin/dept_admin_stats_screen.dart';
+import '../../screens/dept_admin/dept_admin_create_class_screen.dart';
+import '../../screens/dept_admin/dept_admin_academic_hub.dart';
 
 import '../../services/auth_store.dart';
 
@@ -322,6 +325,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const DeptAdminManageDeptScreen(),
     ),
     GoRoute(
+      path: '/dept-admin/stats',
+      builder: (context, state) => const DeptAdminStatsScreen(),
+    ),
+    GoRoute(
+      path: '/dept-admin/create-class',
+      builder: (context, state) => const DeptAdminCreateClassScreen(),
+    ),
+    GoRoute(
       path: '/dept-admin/profile',
       builder: (context, state) => const DeptAdminProfileScreen(),
     ),
@@ -347,6 +358,13 @@ final GoRouter appRouter = GoRouter(
         final divisionId = int.tryParse(state.uri.queryParameters['divisionId'] ?? '');
         final divisionName = state.uri.queryParameters['divisionName'];
         return DeptAdminStudentsScreen(divisionId: divisionId, divisionName: divisionName);
+      },
+    ),
+    GoRoute(
+      path: '/dept-admin/academic-hub',
+      builder: (context, state) {
+        final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
+        return DeptAdminAcademicHub(initialTab: tab);
       },
     ),
     GoRoute(

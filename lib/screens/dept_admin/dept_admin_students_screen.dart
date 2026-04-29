@@ -32,9 +32,17 @@ class _DeptAdminStudentsScreenState extends State<DeptAdminStudentsScreen> {
   }
 
   Future<void> _load() async {
-    if (widget.divisionId == null) { setState(() => _loading = false); return; }
     setState(() => _loading = true);
-    try { _students = await _api.deptAdminGetStudents(widget.divisionId!); } catch (_) {}
+    try {
+      if (widget.divisionId != null) {
+        _students = await _api.deptAdminGetStudents(widget.divisionId!);
+      } else {
+        // Global view: fetch all students in the department
+        _students = await _api.deptAdminGetStudentsByYear();
+      }
+    } catch (e) {
+      debugPrint('Error loading students: $e');
+    }
     setState(() => _loading = false);
   }
 
@@ -90,7 +98,7 @@ class _DeptAdminStudentsScreenState extends State<DeptAdminStudentsScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.go('/dept-admin/divisions'),
+          onPressed: () => context.go('/dept-admin/academic-hub?tab=1'),
         ),
         actions: [
           IconButton(

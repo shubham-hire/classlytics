@@ -234,6 +234,21 @@ const initDb = async () => {
             )`);
             console.log('✅ [DB MIGRATION] fee_payments table ensured.');
         } catch (e) { /* already exists */ }
+
+        // Ensure payments table exists for Razorpay
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                parent_id VARCHAR(50),
+                student_id VARCHAR(50),
+                amount DECIMAL(10,2),
+                status ENUM('PENDING','SUCCESS','FAILED') DEFAULT 'PENDING',
+                razorpay_order_id VARCHAR(255),
+                razorpay_payment_id VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+            console.log('✅ [DB MIGRATION] payments table ensured.');
+        } catch (e) { console.error('❌ Error creating payments table:', e); }
     } catch (err) {
         console.error('❌ [DB INIT ERROR] Table initialization failed:', err.message);
     }

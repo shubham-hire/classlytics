@@ -36,10 +36,9 @@ class _DeptAdminDashboardScreenState extends State<DeptAdminDashboardScreen> {
   }
 
   final _menuItems = [
-    {'icon': Icons.domain_rounded, 'label': 'My Department', 'route': '/dept-admin/department', 'color': Color(0xFF0F9D8C)},
-    {'icon': Icons.class_rounded, 'label': 'Classes', 'route': '/dept-admin/classes', 'color': Color(0xFF1976D2)},
-    {'icon': Icons.account_tree_rounded, 'label': 'Divisions', 'route': '/dept-admin/divisions', 'color': Color(0xFF7B1FA2)},
-    {'icon': Icons.people_alt_rounded, 'label': 'Students', 'route': '/dept-admin/students', 'color': Color(0xFFE64A19)},
+    {'icon': Icons.analytics_rounded, 'label': 'My Department', 'route': '/dept-admin/stats', 'color': Color(0xFF0F9D8C)},
+    {'icon': Icons.add_circle_rounded, 'label': 'Create Class', 'route': '/dept-admin/create-class', 'color': Color(0xFF1565C0)},
+    {'icon': Icons.school_rounded, 'label': 'Academic Hub', 'route': '/dept-admin/academic-hub', 'color': Color(0xFF1976D2)},
     {'icon': Icons.calendar_month_rounded, 'label': 'Timetable', 'route': '/dept-admin/timetable', 'color': Color(0xFFF57C00)},
   ];
 
@@ -103,15 +102,6 @@ class _DeptAdminDashboardScreenState extends State<DeptAdminDashboardScreen> {
                           children: [
                             Expanded(
                               child: _ActionCard(
-                                icon: Icons.domain_rounded,
-                                label: 'Department',
-                                color: Colors.white.withOpacity(0.2),
-                                onTap: () => context.go('/dept-admin/department'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _ActionCard(
                                 icon: Icons.person_rounded,
                                 label: 'My Profile',
                                 color: Colors.white.withOpacity(0.2),
@@ -137,7 +127,7 @@ class _DeptAdminDashboardScreenState extends State<DeptAdminDashboardScreen> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: 1.1,
+                childAspectRatio: 1.15,
               ),
               delegate: SliverChildBuilderDelegate(
                 (ctx, i) {
