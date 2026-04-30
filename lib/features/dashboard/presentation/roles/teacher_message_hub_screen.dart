@@ -761,6 +761,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       maxLines: 4,
                       minLines: 1,
                       decoration: InputDecoration(
+                        prefixIcon: IconButton(
+                          icon: const Icon(Icons.auto_awesome, color: Color(0xFF6366F1)),
+                          tooltip: 'Ask ClassAI',
+                          onPressed: () {
+                            final current = _controller.text;
+                            if (!current.toLowerCase().contains('@classai')) {
+                              _controller.text = '@classAI $current';
+                              _controller.selection = TextSelection.fromPosition(
+                                TextPosition(offset: _controller.text.length),
+                              );
+                            }
+                          },
+                        ),
                         hintText: 'Message or @classAI ask anything...',
                         hintStyle:
                             const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
