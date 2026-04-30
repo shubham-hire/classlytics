@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:classlytics/core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_store.dart';
@@ -19,7 +20,8 @@ class _TeacherAIAssistantScreenState extends State<TeacherAIAssistantScreen> {
 
   final List<Map<String, String>> _messages = [];
 
-  String get _teacherId => AuthStore.instance.currentUser?['id'] ?? '';
+  String get _teacherId =>
+      (AuthStore.instance.currentUser?['user_id'] ?? AuthStore.instance.currentUser?['id'] ?? '').toString();
   String get _teacherName =>
       (AuthStore.instance.currentUser?['name'] ?? 'Teacher').split(' ').first;
 
@@ -57,7 +59,7 @@ class _TeacherAIAssistantScreenState extends State<TeacherAIAssistantScreen> {
     } catch (e) {
       setState(() => _messages.add({
             'role': 'ai',
-            'text': '⚠️ Could not reach the AI service.',
+            'text': '⚠️ Error: ${e.toString().replaceAll("Exception: ", "")}',
           }));
     } finally {
       setState(() => _isLoading = false);
@@ -191,9 +193,19 @@ class _TeacherAIAssistantScreenState extends State<TeacherAIAssistantScreen> {
             bottomRight: Radius.circular(20),
           ),
         ),
-        child: Text(text,
-            style: const TextStyle(
-                color: AppTheme.textPrimary, fontSize: 15, height: 1.5)),
+        child: MarkdownBody(
+          data: text,
+          styleSheet: MarkdownStyleSheet(
+            p: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, height: 1.5),
+            strong: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+            em: const TextStyle(color: AppTheme.textPrimary, fontStyle: FontStyle.italic),
+            listBullet: const TextStyle(color: AppTheme.textPrimary),
+            h1: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+            h2: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+            h3: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+            code: const TextStyle(backgroundColor: Color(0xFFEEF2FF), fontFamily: 'monospace', fontSize: 13),
+          ),
+        ),
       ),
     );
   }

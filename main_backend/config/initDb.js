@@ -246,8 +246,8 @@ const initDb = async () => {
         } catch (e) { /* already exists */ }
 
         try {
-            await db.execute(`ALTER TABLE users MODIFY COLUMN role ENUM('ADMIN','Admin','Teacher','Student','Parent','DEPARTMENT_ADMIN') NOT NULL`);
-            console.log('📡 [DB MIGRATION] Updated users.role ENUM to include ADMIN and DEPARTMENT_ADMIN');
+            await db.execute(`ALTER TABLE users MODIFY COLUMN role ENUM('Admin','Teacher','Student','Parent','DEPARTMENT_ADMIN') NOT NULL`);
+            console.log('📡 [DB MIGRATION] Updated users.role ENUM to include DEPARTMENT_ADMIN');
         } catch (e) { /* already correct */ }
 
         // Ensure fee_payments table exists
