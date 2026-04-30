@@ -13,13 +13,13 @@ exports.addMarks = async (req, res) => {
 
   try {
     const [result] = await db.execute(
-      'INSERT INTO marks (student_id, subject, score, max_score, type, date) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO marks (student_id, subject, score, max_score, type, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
       [studentId, subject, score, maxScore || 100, examType, marksDate]
     );
 
     res.status(201).json({
       message: "Marks added successfully",
-      record: { id: result.insertId, studentId, subject, score, type: examType, date: marksDate }
+      record: { id: result[0].id, studentId, subject, score, type: examType, date: marksDate }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -60,10 +60,10 @@ exports.getQuizResults = async (req, res) => {
       `SELECT 
         subject,
         COUNT(*) AS total_quizzes,
-        ROUND(AVG(score), 1) AS avg_score,
+        ROUND(AVG(score)::numeric, 1) AS avg_score,
         MAX(score) AS best_score,
         MIN(score) AS lowest_score,
-        JSON_ARRAYAGG(JSON_OBJECT('score', score, 'date', date, 'max', max_score)) AS quiz_list
+        jsonb_agg(jsonb_build_object('score', score, 'date', date, 'max', max_score)) AS quiz_list
        FROM marks
        WHERE student_id = ? AND type = 'Quiz'
        GROUP BY subject

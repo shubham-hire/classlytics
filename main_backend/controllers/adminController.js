@@ -6,8 +6,8 @@ const emailService = require('../utils/emailService');
 
 // ─── Helper: Generate sequential student ID ───
 async function generateStudentId(connection) {
-  await connection.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
-  const [seq] = await connection.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
+  await connection.execute("UPDATE global_sequences SET last_value = last_value + 1 WHERE name = 'student'");
+  const [seq] = await connection.execute("SELECT last_value FROM global_sequences WHERE name = 'student'");
   return 'STU' + seq[0].last_value.toString().padStart(3, '0');
 }
 
@@ -16,8 +16,8 @@ exports.getStats = async (req, res) => {
   try {
     const [totalRows] = await db.execute('SELECT COUNT(*) as total FROM users');
     const [roleRows] = await db.execute('SELECT role, COUNT(*) as count FROM users GROUP BY role');
-    const [activeRows] = await db.execute('SELECT COUNT(*) as count FROM users WHERE is_active = 1 OR is_active IS NULL');
-    const [inactiveRows] = await db.execute('SELECT COUNT(*) as count FROM users WHERE is_active = 0');
+    const [activeRows] = await db.execute('SELECT COUNT(*) as count FROM users WHERE is_active = TRUE OR is_active IS NULL');
+    const [inactiveRows] = await db.execute('SELECT COUNT(*) as count FROM users WHERE is_active = FALSE');
     const [classRows] = await db.execute('SELECT COUNT(*) as count FROM classes');
 
     const byRole = {};
@@ -51,13 +51,13 @@ exports.getUsers = async (req, res) => {
     const conditions = [];
     const params = [];
 
-    if (role) { conditions.push('u.role = ?'); params.push(role); }
-    if (dept) { conditions.push('u.dept = ?'); params.push(dept); }
-    if (status === 'active') { conditions.push('(u.is_active = 1 OR u.is_active IS NULL)'); }
-    if (status === 'inactive') { conditions.push('u.is_active = 0'); }
+    if (role) { conditions.push(`u.role = $${params.length + 1}`); params.push(role); }
+    if (dept) { conditions.push(`u.dept = $${params.length + 1}`); params.push(dept); }
+    if (status === 'active') { conditions.push('(u.is_active = TRUE OR u.is_active IS NULL)'); }
+    if (status === 'inactive') { conditions.push('u.is_active = FALSE'); }
     if (search) {
-      conditions.push('(u.name LIKE ? OR u.email LIKE ? OR u.id LIKE ?)');
       const term = `%${search}%`;
+      conditions.push(`(u.name ILIKE $${params.length + 1} OR u.email ILIKE $${params.length + 2} OR u.id ILIKE $${params.length + 3})`);
       params.push(term, term, term);
     }
 
@@ -68,6 +68,7 @@ exports.getUsers = async (req, res) => {
     query += ' ORDER BY u.created_at DESC';
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    // For pg shim: append LIMIT/OFFSET as literals (safe: parseInt)
     query += ` LIMIT ${parseInt(limit)} OFFSET ${offset}`;
 
     const [rows] = await db.execute(query, params);
@@ -181,7 +182,8 @@ exports.createUser = async (req, res) => {
 
     // 1. Insert into users table
     await connection.execute(
-      'INSERT INTO users (id, name, email, password, role, phone, address, country, state, district, city, dept, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
+      'INSERT INTO users (id, name, email, password, role, phone, address, country, state, district, city, dept, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)',
+      // Note: pg shim converts ? → $N automatically
       [userId, name, email, hashedPassword, role, phone || null, address || null, country || null, state || null, district || null, city || null, dept || null]
     );
 
@@ -200,7 +202,7 @@ exports.createUser = async (req, res) => {
       if (classId) {
         const nextRoll = studentRollNo || 1;
         await connection.execute(
-          'INSERT INTO class_enrollments (class_id, student_id, roll_no) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE roll_no = VALUES(roll_no)',
+          'INSERT INTO class_enrollments (class_id, student_id, roll_no) VALUES (?, ?, ?) ON CONFLICT (class_id, student_id) DO UPDATE SET roll_no = EXCLUDED.roll_no',
           [classId, studentId, nextRoll]
         );
       }
@@ -348,7 +350,7 @@ exports.toggleUserStatus = async (req, res) => {
     const [users] = await db.execute('SELECT id FROM users WHERE id = ?', [id]);
     if (users.length === 0) return res.status(404).json({ error: 'User not found' });
 
-    await db.execute('UPDATE users SET is_active = ? WHERE id = ?', [isActive ? 1 : 0, id]);
+    await db.execute('UPDATE users SET is_active = ? WHERE id = ?', [isActive ? true : false, id]);
     res.status(200).json({ message: `User ${isActive ? 'activated' : 'deactivated'} successfully` });
   } catch (err) {
     console.error('[Admin toggleStatus] Error:', err);
@@ -392,7 +394,7 @@ exports.bulkCreateUsers = async (req, res) => {
         const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
         await connection.execute(
-          'INSERT INTO users (id, name, email, password, role, phone, dept, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+          'INSERT INTO users (id, name, email, password, role, phone, dept, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)',
           [userId, u.name, u.email, hashedPassword, u.role, u.phone || null, u.dept || null]
         );
 
@@ -470,30 +472,30 @@ exports.getVisualAnalytics = async (req, res) => {
     // Cast to FLOAT to avoid String results in JSON
     const [feeRows] = await db.execute(`
       SELECT 
-        DATE_FORMAT(created_at, '%b %Y') as month,
-        CAST(SUM(paid_amount) AS FLOAT) as total
+        TO_CHAR(created_at, 'Mon YYYY') as month,
+        SUM(paid_amount)::FLOAT as total
       FROM fees
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-      GROUP BY month
-      ORDER BY MIN(created_at) ASC
+      WHERE created_at >= NOW() - INTERVAL '6 months'
+      GROUP BY TO_CHAR(created_at, 'Mon YYYY'), DATE_TRUNC('month', created_at)
+      ORDER BY DATE_TRUNC('month', MIN(created_at)) ASC
     `);
 
     // 2. Attendance Daily (Last 14 days)
     const [attRows] = await db.execute(`
       SELECT 
-        DATE_FORMAT(date, '%d %b') as day,
-        CAST(ROUND(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) / COUNT(*) * 100) AS FLOAT) as pct
+        TO_CHAR(date, 'DD Mon') as day,
+        ROUND(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END)::FLOAT / COUNT(*) * 100)::FLOAT as pct
       FROM attendance
-      WHERE date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
-      GROUP BY day
-      ORDER BY MIN(date) ASC
+      WHERE date >= CURRENT_DATE - INTERVAL '14 days'
+      GROUP BY TO_CHAR(date, 'DD Mon'), date
+      ORDER BY date ASC
     `);
 
     // 3. Subject Performance (Averages)
     const [marksRows] = await db.execute(`
       SELECT 
         subject,
-        CAST(ROUND(AVG(score/max_score * 100)) AS FLOAT) as avg
+        ROUND(AVG(score/max_score * 100))::FLOAT as avg
       FROM marks
       GROUP BY subject
       ORDER BY avg DESC
@@ -531,7 +533,7 @@ exports.createDepartmentAdmin = async (req, res) => {
     if (existing.length > 0) return res.status(400).json({ error: 'Email already exists' });
 
     await db.execute(
-      'INSERT INTO users (id, name, email, password, role, is_active, department_id) VALUES (?, ?, ?, ?, "DEPARTMENT_ADMIN", 1, ?)',
+      "INSERT INTO users (id, name, email, password, role, is_active, department_id) VALUES (?, ?, ?, ?, 'DEPARTMENT_ADMIN', TRUE, ?)",
       [userId, name, email, hashedPassword, department_id]
     );
 
@@ -575,7 +577,7 @@ exports.getDepartmentAdmins = async (req, res) => {
 exports.deleteDepartmentAdmin = async (req, res) => {
   const { id } = req.params;
   try {
-    await db.execute('DELETE FROM users WHERE id = ? AND role = "DEPARTMENT_ADMIN"', [id]);
+    await db.execute("DELETE FROM users WHERE id = ? AND role = 'DEPARTMENT_ADMIN'", [id]);
     res.status(200).json({ message: 'Department Admin deleted successfully' });
   } catch (err) {
     console.error('[Admin deleteDepartmentAdmin] Error:', err);
@@ -602,11 +604,11 @@ exports.createFeeStructure = async (req, res) => {
     }
 
     const [result] = await db.execute(
-      'INSERT INTO category_fee_structures (department_id, year, category, amount) VALUES (?, ?, ?, ?)',
+      'INSERT INTO category_fee_structures (department_id, year, category, amount) VALUES (?, ?, ?, ?) RETURNING id',
       [department_id, year, category, amount]
     );
 
-    res.status(201).json({ message: 'Fee structure created successfully', id: result.insertId });
+    res.status(201).json({ message: 'Fee structure created successfully', id: result[0].id });
   } catch (err) {
     console.error('[Admin createFeeStructure] Error:', err);
     res.status(500).json({ error: err.message });

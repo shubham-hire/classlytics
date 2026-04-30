@@ -65,8 +65,8 @@ exports.createDepartment = async (req, res) => {
   if (!name) return res.status(400).json({ error: 'Department name is required' });
 
   try {
-    const [result] = await db.execute('INSERT INTO departments (name) VALUES (?)', [name]);
-    res.status(201).json({ message: 'Department created', id: result.insertId, name });
+    const [result] = await db.execute('INSERT INTO departments (name) VALUES (?) RETURNING id', [name]);
+    res.status(201).json({ message: 'Department created', id: result[0].id, name });
   } catch (err) {
     console.error('[DEPT_ADMIN createDepartment] Error:', err);
     res.status(500).json({ error: err.message });
@@ -159,10 +159,10 @@ exports.createDivision = async (req, res) => {
     if (!(await verifyDeptOwnership(req, res, classes[0].department_id))) return;
 
     const [result] = await db.execute(
-      'INSERT INTO divisions (class_id, division_name) VALUES (?, ?)',
+      'INSERT INTO divisions (class_id, division_name) VALUES (?, ?) RETURNING id',
       [class_id, division_name]
     );
-    res.status(201).json({ message: 'Division created', id: result.insertId, class_id, division_name });
+    res.status(201).json({ message: 'Division created', id: result[0].id, class_id, division_name });
   } catch (err) {
     console.error('[DEPT_ADMIN createDivision] Error:', err);
     res.status(500).json({ error: err.message });
@@ -229,8 +229,8 @@ exports.addStudent = async (req, res) => {
       const deptName = deptRows.length > 0 ? deptRows[0].name : 'General';
 
       // Generate student sequence ID
-      await connection.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
-      const [seq] = await connection.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
+      await connection.execute("UPDATE global_sequences SET last_value = last_value + 1 WHERE name = 'student'");
+      const [seq] = await connection.execute("SELECT last_value FROM global_sequences WHERE name = 'student'");
       const studentId = 'STU' + seq[0].last_value.toString().padStart(3, '0');
 
       const userId = uuidv4();
@@ -238,7 +238,7 @@ exports.addStudent = async (req, res) => {
       const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
       await connection.execute(
-        'INSERT INTO users (id, name, email, password, role, is_active) VALUES (?, ?, ?, ?, "Student", 1)',
+        "INSERT INTO users (id, name, email, password, role, is_active) VALUES (?, ?, ?, ?, 'Student', TRUE)",
         [userId, name, email, hashedPassword]
       );
 
@@ -335,11 +335,11 @@ exports.createTimetableEntry = async (req, res) => {
     }
 
     const [result] = await db.execute(
-      'INSERT INTO timetable (class_id, division_id, subject, teacher_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO timetable (class_id, division_id, subject, teacher_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
       [class_id, division_id || null, subject, teacher_id || null, day_of_week, start_time, end_time]
     );
 
-    res.status(201).json({ message: 'Timetable entry created', id: result.insertId });
+    res.status(201).json({ message: 'Timetable entry created', id: result[0].id });
   } catch (err) {
     console.error('[DEPT_ADMIN createTimetableEntry] Error:', err);
     res.status(500).json({ error: err.message });
@@ -370,7 +370,10 @@ exports.getTimetable = async (req, res) => {
       params.push(divisionFilter);
     }
 
-    query += ' ORDER BY FIELD(day_of_week,"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"), t.start_time';
+    query += ` ORDER BY CASE day_of_week
+      WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
+      WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
+      WHEN 'Sunday' THEN 7 ELSE 8 END, t.start_time`;
 
     const [rows] = await db.execute(query, params);
     res.status(200).json(rows);
@@ -429,7 +432,7 @@ exports.getDepartmentStats = async (req, res) => {
     ] = await Promise.all([
       db.execute('SELECT COUNT(DISTINCT s.id) AS total FROM students s JOIN divisions d ON s.division_id = d.id JOIN classes c ON d.class_id = c.id WHERE c.department_id = ?', [deptId]),
       db.execute('SELECT s.current_year AS year_label, COUNT(*) AS count FROM students s JOIN divisions d ON s.division_id = d.id JOIN classes c ON d.class_id = c.id WHERE c.department_id = ? GROUP BY s.current_year ORDER BY s.current_year', [deptId]),
-      db.execute('SELECT COUNT(DISTINCT u.id) AS total FROM users u WHERE u.department_id = ? AND u.role = "Teacher"', [deptId]),
+      db.execute("SELECT COUNT(DISTINCT u.id) AS total FROM users u WHERE u.department_id = ? AND u.role = 'Teacher'", [deptId]),
       db.execute('SELECT COUNT(DISTINCT c.teacher_id) AS total FROM classes c WHERE c.department_id = ? AND c.teacher_id IS NOT NULL', [deptId]),
       db.execute('SELECT COUNT(*) AS total FROM classes WHERE department_id = ?', [deptId]),
       db.execute('SELECT COUNT(*) AS total FROM divisions d JOIN classes c ON d.class_id = c.id WHERE c.department_id = ?', [deptId]),
@@ -566,10 +569,10 @@ exports.createClassEnhanced = async (req, res) => {
 
       // 2. Create the division
       const [divResult] = await connection.execute(
-        'INSERT INTO divisions (class_id, division_name) VALUES (?, ?)',
+        'INSERT INTO divisions (class_id, division_name) VALUES (?, ?) RETURNING id',
         [classId, division]
       );
-      const divisionId = divResult.insertId;
+      const divisionId = divResult[0].id;
 
       // 3. Assign students to the division (if provided)
       let assignedCount = 0;
@@ -584,7 +587,7 @@ exports.createClassEnhanced = async (req, res) => {
           // Also create class enrollment
           try {
             await connection.execute(
-              'INSERT IGNORE INTO class_enrollments (class_id, student_id) VALUES (?, ?)',
+              'INSERT INTO class_enrollments (class_id, student_id) VALUES (?, ?) ON CONFLICT (class_id, student_id) DO NOTHING',
               [classId, studentId]
             );
           } catch (_) { /* ignore duplicates */ }

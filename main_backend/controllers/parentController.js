@@ -76,7 +76,7 @@ exports.updateLeaveRequestStatus = async (req, res) => {
         await db.execute(
           `INSERT INTO attendance (student_id, date, status) 
            VALUES (?, ?, 'Absent') 
-           ON DUPLICATE KEY UPDATE status = 'Absent'`,
+           ON CONFLICT (student_id, date) DO UPDATE SET status = 'Absent'`,
           [leave.student_id, formattedDate]
         );
         currentDate.setDate(currentDate.getDate() + 1);
@@ -227,7 +227,7 @@ exports.getWeeklySummary = async (req, res) => {
 
     const [markRows] = await db.execute('SELECT subject, score, max_score, type FROM marks WHERE student_id = ? ORDER BY date DESC LIMIT 5', [studentId]);
     const [attendanceRows] = await db.execute('SELECT status FROM attendance WHERE student_id = ? ORDER BY date DESC LIMIT 14', [studentId]);
-    const [leaveRows] = await db.execute('SELECT count(*) as count FROM leave_requests WHERE student_id = ? AND start_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)', [studentId]);
+    const [leaveRows] = await db.execute('SELECT count(*) as count FROM leave_requests WHERE student_id = ? AND start_date >= NOW() - INTERVAL \'7 days\'', [studentId]);
     
     let perfContext = markRows.length > 0 ? markRows.map(m => `${m.subject}: ${m.score}/${m.max_score}`).join(', ') : 'No recent marks';
     let attContext = attendanceRows.length > 0 ? `${attendanceRows.filter(r => r.status==='Present').length}/${attendanceRows.length} present` : 'No recent attendance';

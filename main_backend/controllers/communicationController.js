@@ -12,11 +12,11 @@ exports.sendMessage = async (req, res) => {
 
   try {
     const [result] = await db.execute(
-      'INSERT INTO messages (sender_id, receiver_id, body) VALUES (?, ?, ?)',
+      'INSERT INTO messages (sender_id, receiver_id, body) VALUES (?, ?, ?) RETURNING id',
       [from, to, body]
     );
     console.log(`[MESSAGE] ${from} → ${to}: "${body}"`);
-    res.status(201).json({ message: 'Message sent', data: { id: result.insertId, from, to, body, timestamp: new Date().toISOString(), isRead: false } });
+    res.status(201).json({ message: 'Message sent', data: { id: result[0].id, from, to, body, timestamp: new Date().toISOString(), isRead: false } });
   } catch (err) {
     console.error('[sendMessage] Error:', err.message);
     res.status(500).json({ error: err.message });
@@ -93,11 +93,11 @@ exports.sendAnnouncement = async (req, res) => {
 
   try {
     const [result] = await db.execute(
-      'INSERT INTO announcements (class_id, title, body) VALUES (?, ?, ?)',
+      'INSERT INTO announcements (class_id, title, body) VALUES (?, ?, ?) RETURNING id',
       [classId, title, body]
     );
     console.log(`[ANNOUNCEMENT] Class ${classId}: "${title}"`);
-    res.status(201).json({ message: 'Announcement sent', announcement: { id: result.insertId, classId, title, body, createdAt: new Date().toISOString() } });
+    res.status(201).json({ message: 'Announcement sent', announcement: { id: result[0].id, classId, title, body, createdAt: new Date().toISOString() } });
   } catch (err) {
     console.error('[sendAnnouncement] Error:', err.message);
     res.status(500).json({ error: err.message });

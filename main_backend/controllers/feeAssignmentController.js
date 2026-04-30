@@ -103,10 +103,13 @@ exports.assignFee = async (req, res) => {
     await db.execute(`
       INSERT INTO student_fee_assignments (student_id, fee_structure_id, total_amount, paid_amount, status, due_date)
       VALUES (?, ?, ?, 0, 'Pending', ?)
-      ON DUPLICATE KEY UPDATE
-        total_amount = VALUES(total_amount),
-        due_date = VALUES(due_date),
-        status = IF(paid_amount >= VALUES(total_amount), 'Paid', IF(paid_amount > 0, 'Partial', 'Pending'))
+      ON CONFLICT (student_id, fee_structure_id) DO UPDATE SET
+        total_amount = EXCLUDED.total_amount,
+        due_date = EXCLUDED.due_date,
+        status = CASE
+          WHEN student_fee_assignments.paid_amount >= EXCLUDED.total_amount THEN 'Paid'
+          WHEN student_fee_assignments.paid_amount > 0 THEN 'Partial'
+          ELSE 'Pending' END
     `, [student_id, fee_structure_id, fs.total_fee, fs.due_date || null]);
 
     res.status(201).json({ message: 'Fee assigned successfully' });
@@ -147,7 +150,7 @@ exports.bulkAssignByClass = async (req, res) => {
         await db.execute(`
           INSERT INTO student_fee_assignments (student_id, fee_structure_id, total_amount, paid_amount, status, due_date)
           VALUES (?, ?, ?, 0, 'Pending', ?)
-          ON DUPLICATE KEY UPDATE total_amount = VALUES(total_amount), due_date = VALUES(due_date)
+          ON CONFLICT (student_id, fee_structure_id) DO UPDATE SET total_amount = EXCLUDED.total_amount, due_date = EXCLUDED.due_date
         `, [student_id, fee_structure_id, fs.total_fee, fs.due_date || null]);
         assigned++;
       } catch (_) {
@@ -240,8 +243,8 @@ exports.recordPayment = async (req, res) => {
     await connection.execute(`
       INSERT INTO fees (student_id, total_fee, paid_amount, due_date)
       VALUES (?, ?, ?, NULL)
-      ON DUPLICATE KEY UPDATE paid_amount = paid_amount + ?
-    `, [assignment.student_id, assignment.total_amount, amount, amount]);
+      ON CONFLICT (student_id) DO UPDATE SET paid_amount = fees.paid_amount + EXCLUDED.paid_amount
+    `, [assignment.student_id, assignment.total_amount, amount]);
 
     await connection.commit();
     res.status(201).json({ 

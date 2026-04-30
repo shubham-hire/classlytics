@@ -16,11 +16,11 @@ exports.addBehaviorLog = async (req, res) => {
 
   try {
     const [result] = await db.execute(
-      'INSERT INTO behavior_logs (student_id, type, remark) VALUES (?, ?, ?)',
+      'INSERT INTO behavior_logs (student_id, type, remark) VALUES (?, ?, ?) RETURNING id',
       [studentId, normalizedType, remark]
     );
     console.log(`[BEHAVIOR] Logged "${type}" for student ${studentId}: ${remark}`);
-    res.status(201).json({ message: 'Behavior log added', log: { id: result.insertId, studentId, type: normalizedType, remark, date: new Date().toISOString() } });
+    res.status(201).json({ message: 'Behavior log added', log: { id: result[0].id, studentId, type: normalizedType, remark, date: new Date().toISOString() } });
   } catch (err) {
     console.error('[addBehaviorLog] Error:', err.message);
     res.status(500).json({ error: err.message });

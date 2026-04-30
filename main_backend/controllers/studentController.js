@@ -5,8 +5,8 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
 async function generateStudentId(connection) {
-  await connection.execute('UPDATE global_sequences SET `last_value` = `last_value` + 1 WHERE name = "student"');
-  const [seq] = await connection.execute('SELECT `last_value` FROM global_sequences WHERE name = "student"');
+  await connection.execute("UPDATE global_sequences SET last_value = last_value + 1 WHERE name = 'student'");
+  const [seq] = await connection.execute("SELECT last_value FROM global_sequences WHERE name = 'student'");
   return 'STU' + seq[0].last_value.toString().padStart(3, '0');
 }
 
@@ -34,7 +34,7 @@ async function enrollStudentInClass(connection, classId, studentId, rollNo) {
 
   const classRollNo = normalizeRollNo(rollNo) || await getNextClassRollNo(connection, classId);
   await connection.execute(
-    'INSERT INTO class_enrollments (class_id, student_id, roll_no) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE roll_no = VALUES(roll_no)',
+    'INSERT INTO class_enrollments (class_id, student_id, roll_no) VALUES (?, ?, ?) ON CONFLICT (class_id, student_id) DO UPDATE SET roll_no = EXCLUDED.roll_no',
     [classId, studentId, classRollNo]
   );
   return classRollNo;
@@ -97,7 +97,7 @@ exports.addStudent = async (req, res) => {
       );
       if (structures.length > 0) {
         await connection.execute(
-          'INSERT INTO student_category_fees (student_id, fee_structure_id, total_amount, status) VALUES (?, ?, ?, "PENDING")',
+          "INSERT INTO student_category_fees (student_id, fee_structure_id, total_amount, status) VALUES (?, ?, ?, 'PENDING')",
           [studentId, structures[0].id, structures[0].amount]
         );
       }
@@ -373,7 +373,7 @@ exports.createWithParent = async (req, res) => {
       );
       if (structures.length > 0) {
         await connection.execute(
-          'INSERT INTO student_category_fees (student_id, fee_structure_id, total_amount, status) VALUES (?, ?, ?, "PENDING")',
+          "INSERT INTO student_category_fees (student_id, fee_structure_id, total_amount, status) VALUES (?, ?, ?, 'PENDING')",
           [studentId, structures[0].id, structures[0].amount]
         );
       }
