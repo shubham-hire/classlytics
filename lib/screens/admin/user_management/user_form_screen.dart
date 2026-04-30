@@ -4,6 +4,7 @@ import 'package:dropdown_search/dropdown_search.dart';
 import '../../../services/api_service.dart';
 import '../../../models/department.dart';
 import '../../../core/theme/app_theme.dart';
+import '../admin_shell.dart';
 
 class UserFormScreen extends StatefulWidget {
   final String? userId; // null = create mode, non-null = edit mode
@@ -47,10 +48,8 @@ class _UserFormScreenState extends State<UserFormScreen> {
   String? _geoError;
 
   // Student-specific
-  final _rollNoController = TextEditingController();
   final _dobController = TextEditingController();
   String _selectedYear = 'First Year';
-  String? _selectedClassId;
 
   // Parent-specific
   String _selectedRelation = 'Guardian';
@@ -82,7 +81,6 @@ class _UserFormScreenState extends State<UserFormScreen> {
     _phoneController.dispose();
     _addressController.dispose();
     _deptController.dispose();
-    _rollNoController.dispose();
     _dobController.dispose();
     _parentNameController.dispose();
     _parentPhoneController.dispose();
@@ -131,7 +129,6 @@ class _UserFormScreenState extends State<UserFormScreen> {
         }
 
         if (_selectedRole == 'Student') {
-          _rollNoController.text = (user['roll_no'] ?? '').toString();
           _dobController.text = user['dob'] != null ? user['dob'].toString().split('T')[0] : '';
           
           final yr = user['current_year'];
@@ -144,7 +141,6 @@ class _UserFormScreenState extends State<UserFormScreen> {
           } else {
             _selectedYear = 'First Year';
           }
-          _selectedClassId = user['class_id'];
         } else if (_selectedRole == 'Parent') {
           _selectedRelation = user['relation'] ?? 'Guardian';
           _selectedChildId = user['child_id'];
@@ -188,10 +184,8 @@ class _UserFormScreenState extends State<UserFormScreen> {
 
     // Student-specific
     if (_selectedRole == 'Student') {
-      data['rollNo'] = _rollNoController.text.trim();
       data['dob'] = _dobController.text.trim();
       data['currentYear'] = _selectedYear;
-      data['classId'] = _selectedClassId ?? '';
       
       // Detailed fields
       data['parentName'] = _parentNameController.text.trim();
@@ -332,7 +326,6 @@ class _UserFormScreenState extends State<UserFormScreen> {
               _emailController.clear();
               _phoneController.clear();
               _addressController.clear();
-              _rollNoController.clear();
               _dobController.clear();
               setState(() => _createdTempPassword = null);
             },
@@ -382,36 +375,39 @@ class _UserFormScreenState extends State<UserFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          widget.isEditMode ? 'Edit User' : 'Add New User',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () {
-            if (widget.isEditMode) {
-              context.pop();
-            } else {
-              context.go('/admin/users');
-            }
-          },
-        ),
-      ),
-      body: _initialLoading
+    return AdminShell(
+      title: widget.isEditMode ? 'Edit User' : 'Add New User',
+      child: _initialLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Back button row
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            if (widget.isEditMode) {
+                              context.pop();
+                            } else {
+                              context.go('/admin/users');
+                            }
+                          },
+                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                          label: const Text('Back to Users'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.textSecondary,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
                     // ─── ROLE SELECTOR ───
                     if (!widget.isEditMode) ...[
                       _sectionTitle('Role'),
@@ -543,9 +539,6 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
                           onChanged: (v) => setState(() => _selectedYear = v!),
                         ),
-                        const SizedBox(height: 14),
-                        _textField(_rollNoController, 'Roll Number', Icons.tag_rounded,
-                            keyboardType: TextInputType.number),
                         // DOB picker
                         TextFormField(
                           controller: _dobController,
@@ -557,21 +550,6 @@ class _UserFormScreenState extends State<UserFormScreen> {
                             ),
                           ),
                           onTap: _pickDate,
-                        ),
-                        const SizedBox(height: 14),
-                        // Class dropdown
-                        DropdownButtonFormField<String>(
-                          value: _selectedClassId,
-                          decoration: _inputDecoration('Assign to Class', Icons.class_rounded),
-                          isExpanded: true,
-                          items: [
-                            const DropdownMenuItem(value: null, child: Text('No class', style: TextStyle(color: Colors.grey))),
-                            ..._classes.map((c) => DropdownMenuItem(
-                              value: c['id'] as String,
-                              child: Text('${c['name']} - ${c['section']}${c['teacher_name'] != null ? ' (${c['teacher_name']})' : ''}'),
-                            )),
-                          ],
-                          onChanged: (v) => setState(() => _selectedClassId = v),
                         ),
                       ]),
 

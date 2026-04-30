@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../models/department.dart';
 import '../../../services/api_service.dart';
+import '../admin_shell.dart';
 
 class CreateDeptAdminScreen extends StatefulWidget {
   const CreateDeptAdminScreen({super.key});
@@ -74,19 +75,9 @@ class _CreateDeptAdminScreenState extends State<CreateDeptAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        backgroundColor: _purple,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Create Department Admin', style: TextStyle(fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.go('/admin'),
-        ),
-      ),
-      body: SingleChildScrollView(
+    return AdminShell(
+      title: 'Create Department Admin',
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,

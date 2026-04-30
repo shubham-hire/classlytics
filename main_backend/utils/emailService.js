@@ -102,3 +102,41 @@ Classlytics Team`,
     throw err;
   }
 };
+
+exports.sendUserWelcomeEmail = async (user, rawPassword, role) => {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('[EMAIL] SMTP credentials not set. Skipping email.');
+    return;
+  }
+
+  const mailOptions = {
+    from: `"Classlytics ERP" <${process.env.SMTP_USER}>`,
+    to: user.email,
+    subject: `Your ${role} Account Credentials`,
+    text: `Hello ${user.name},\n\nYour ${role} account has been created on Classlytics.\n\nEmail: ${user.email}\nPassword: ${rawPassword}\n\nPlease login and change your password for security.\n\nBest regards,\nClasslytics Team`,
+    html: `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="color: #4F46E5;">Welcome to Classlytics, ${user.name}!</h2>
+      <p>Your <b>${role}</b> account has been successfully created.</p>
+      <div style="background: #F8FAFC; padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid #E2E8F0;">
+        <p style="margin: 0; color: #64748B; font-size: 14px;">ACCOUNT CREDENTIALS</p>
+        <p style="margin: 10px 0 5px 0;"><b>Email:</b> ${user.email}</p>
+        <p style="margin: 0;"><b>Password:</b> <code style="background: #EEF2FF; color: #4F46E5; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 16px;">${rawPassword}</code></p>
+      </div>
+      <p><b>Next Step:</b> Please login to the portal and update your password immediately from the settings menu.</p>
+      <br>
+      <hr style="border: 0; border-top: 1px solid #E2E8F0;">
+      <p style="font-size: 12px; color: #94A3B8;">This is an automated message, please do not reply.</p>
+      <p>Best regards,<br><b>Classlytics Administration</b></p>
+    </div>`,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[EMAIL] ${role} welcome email sent to ${user.email}: ${info.messageId}`);
+    return info;
+  } catch (err) {
+    console.error(`[EMAIL] Failed to send email to ${user.email}:`, err.message);
+    throw err;
+  }
+};
+

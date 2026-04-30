@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:image_picker/image_picker.dart' as image_picker;
 import 'package:classlytics/core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
@@ -280,9 +281,17 @@ class _AIAssistantScreenState extends State<AIAssistantScreen>
             bottomRight: Radius.circular(20),
           ),
         ),
-        child: Text(text,
-            style: const TextStyle(
-                color: AppTheme.textPrimary, fontSize: 15, height: 1.5)),
+        child: MarkdownBody(
+          data: text,
+          styleSheet: MarkdownStyleSheet(
+            p: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, height: 1.5),
+            strong: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+            listBullet: const TextStyle(color: AppTheme.textPrimary),
+            h1: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+            h2: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+            h3: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ),
       ),
     );
   }
@@ -442,12 +451,15 @@ class _AIAssistantScreenState extends State<AIAssistantScreen>
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  msg,
-                  style: TextStyle(
-                      color: Colors.orange.shade800,
-                      fontWeight: FontWeight.w600,
-                      height: 1.4),
+                child: MarkdownBody(
+                  data: msg,
+                  styleSheet: MarkdownStyleSheet(
+                    p: TextStyle(
+                        color: Colors.orange.shade800,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4),
+                    strong: TextStyle(color: Colors.orange.shade900, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],

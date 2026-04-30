@@ -7,7 +7,7 @@ import 'auth_store.dart';
 
 class ApiService {
   // Use 127.0.0.1 for Web/Desktop, 10.0.2.2 for Emulator, or your local LAN IP for physical device
-  static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.93.119.116:3000';
+  static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://192.168.137.165:3000';
 
   /// Exposed for screens that need to build multipart requests directly (e.g. file upload)
   static String get baseUrl => _baseUrl;
@@ -628,7 +628,7 @@ class ApiService {
     try {
       final response = await http.get(url, headers: _authHeaders);
       if (response.statusCode == 200) {
-        return jsonDecode(response.body)['departments'] as List<dynamic>? ?? [];
+        return jsonDecode(response.body) as List<dynamic>? ?? [];
       }
       throw Exception('Failed to load departments');
     } catch (e) {

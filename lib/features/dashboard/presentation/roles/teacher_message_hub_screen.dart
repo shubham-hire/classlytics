@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:classlytics/core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/auth_store.dart';
@@ -994,13 +995,26 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             offset: const Offset(0, 2))
                       ],
                     ),
-              child: Text(
-                text,
-                style: TextStyle(
-                    color: (isMe || isAI) ? Colors.white : AppTheme.textPrimary,
-                    fontSize: 14,
-                    height: 1.4),
-              ),
+              child: isAI
+                  ? MarkdownBody(
+                      data: text,
+                      styleSheet: MarkdownStyleSheet(
+                        p: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+                        strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        em: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+                        listBullet: const TextStyle(color: Colors.white),
+                        h1: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                        h2: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        h3: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    )
+                  : Text(
+                      text,
+                      style: TextStyle(
+                          color: (isMe || isAI) ? Colors.white : AppTheme.textPrimary,
+                          fontSize: 14,
+                          height: 1.4),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 3, left: 4, right: 4),

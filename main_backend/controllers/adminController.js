@@ -97,7 +97,7 @@ exports.getUserById = async (req, res) => {
   try {
     // 1. Try finding by User UUID
     let [users] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
-    
+
     // 2. If not found, try finding by Student ID (STUxxx)
     if (users.length === 0) {
       [users] = await db.execute(`
@@ -147,12 +147,12 @@ exports.getUserById = async (req, res) => {
 // ─── POST /api/admin/users ───
 exports.createUser = async (req, res) => {
   const { name, email, role, phone, address, country, state, district, city, dept,
-          // Student-specific
-          classId, rollNo, dob, currentYear,
-          // Parent-specific
-          childId, relation,
-          // Teacher-specific (classId reused for assignment)
-        } = req.body;
+    // Student-specific
+    classId, rollNo, dob, currentYear,
+    // Parent-specific
+    childId, relation,
+    // Teacher-specific (classId reused for assignment)
+  } = req.body;
 
   if (!name || !email || !role) {
     return res.status(400).json({ error: 'name, email, and role are required' });
@@ -219,6 +219,10 @@ exports.createUser = async (req, res) => {
 
     console.log(`[Admin] Created ${role}: ${email} | Temp Password: ${rawPassword}`);
 
+    // Send welcome email asynchronously
+    emailService.sendUserWelcomeEmail({ name, email }, rawPassword, role)
+      .catch(err => console.error(`[AUTH] Failed to send welcome email to ${role}:`, err.message));
+
     res.status(201).json({
       message: `${role} created successfully`,
       userId,
@@ -239,10 +243,10 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
   const { name, email, phone, address, country, state, district, city, dept,
-          // Student-specific
-          rollNo, dob, currentYear, classId,
-          // Parent-specific
-          childId, relation } = req.body;
+    // Student-specific
+    rollNo, dob, currentYear, classId,
+    // Parent-specific
+    childId, relation } = req.body;
 
   try {
     const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
@@ -264,7 +268,7 @@ exports.updateUser = async (req, res) => {
         dept = COALESCE(?, dept)
       WHERE id = ?`,
       [name || null, email || null, phone || null, address || null, country || null,
-       state || null, district || null, city || null, dept || null, id]
+      state || null, district || null, city || null, dept || null, id]
     );
 
     // Role-specific updates
@@ -402,6 +406,10 @@ exports.bulkCreateUsers = async (req, res) => {
         }
 
         created.push({ row: i + 1, userId, studentId, name: u.name, email: u.email, role: u.role, tempPassword: rawPassword });
+
+        // Send welcome email asynchronously
+        emailService.sendUserWelcomeEmail({ name: u.name, email: u.email }, rawPassword, u.role)
+          .catch(err => console.error(`[AUTH] Failed to send welcome email to ${u.role}:`, err.message));
       } catch (innerErr) {
         errors.push({ row: i + 1, error: innerErr.message });
       }
@@ -518,7 +526,7 @@ exports.createDepartmentAdmin = async (req, res) => {
     const userId = uuidv4();
     const rawPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
-    
+
     const [existing] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) return res.status(400).json({ error: 'Email already exists' });
 
@@ -535,11 +543,11 @@ exports.createDepartmentAdmin = async (req, res) => {
 
     console.log(`[Admin] Dept Admin created: ${email} | Password: ${rawPassword}`);
 
-    res.status(201).json({ 
-      message: 'Department Admin created successfully', 
-      userId, 
+    res.status(201).json({
+      message: 'Department Admin created successfully',
+      userId,
       emailSent: true,
-      tempPassword: rawPassword 
+      tempPassword: rawPassword
     });
   } catch (err) {
     console.error('[Admin createDepartmentAdmin] Error:', err);
@@ -563,28 +571,6 @@ exports.getDepartmentAdmins = async (req, res) => {
   }
 };
 
-    });
-  } catch (err) {
-    console.error('[Admin createDepartmentAdmin] Error:', err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-exports.getDepartmentAdmins = async (req, res) => {
-  try {
-    const query = `
-      SELECT u.id, u.name, u.email, u.department_id, d.name AS department_name
-      FROM users u
-      LEFT JOIN departments d ON u.department_id = d.id
-      WHERE u.role = 'DEPARTMENT_ADMIN'
-    `;
-    const [rows] = await db.execute(query);
-    res.status(200).json({ departmentAdmins: rows });
-  } catch (err) {
-    console.error('[Admin getDepartmentAdmins] Error:', err);
-    res.status(500).json({ error: err.message });
-  }
-};
 
 exports.deleteDepartmentAdmin = async (req, res) => {
   const { id } = req.params;
@@ -600,7 +586,7 @@ exports.deleteDepartmentAdmin = async (req, res) => {
 // ─── FEE STRUCTURES (Category-Based) ───
 exports.createFeeStructure = async (req, res) => {
   const { department_id, year, category, amount } = req.body;
-  
+
   if (!department_id || !year || !category || amount === undefined) {
     return res.status(400).json({ error: 'department_id, year, category, amount are required' });
   }
