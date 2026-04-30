@@ -1,0 +1,77 @@
+services:
+  - type: web
+    name: classlytics-backend
+    runtime: node
+    region: singapore         # closest to India; change to "ohio" for US
+    plan: free                # upgrade to "starter" ($7/mo) for always-on
+    rootDir: main_backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # --- Database (linked from Render PostgreSQL service below) ---
+      - key: DB_HOST
+        fromDatabase:
+          name: classlytics-db
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: classlytics-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: classlytics-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: classlytics-db
+          property: database
+      - key: DB_PORT
+        fromDatabase:
+          name: classlytics-db
+          property: port
+      - key: DB_SSL
+        value: "true"
+      # --- JWT ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # --- NVIDIA AI ---
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: NVIDIA_MODEL
+        value: meta/llama-3.1-8b-instruct
+      - key: NVIDIA_VISION_MODEL
+        value: meta/llama-3.2-90b-vision-instruct
+      # --- GROQ ---
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      # --- SMTP ---
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      # --- Razorpay ---
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+
+databases:
+  - name: classlytics-db
+    databaseName: classlytics_db
+    plan: free          # 1 GB storage, expires after 90 days on free tier
+    region: singapore
