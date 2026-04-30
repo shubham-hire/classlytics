@@ -2,10 +2,13 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const db = require('../config/db');
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let razorpay;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+    razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+}
 
 exports.createOrder = async (req, res) => {
     try {
@@ -13,6 +16,10 @@ exports.createOrder = async (req, res) => {
         
         if (!amount || !student_id) {
             return res.status(400).json({ error: 'amount and student_id are required' });
+        }
+
+        if (!razorpay) {
+            return res.status(500).json({ error: 'Payment gateway is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' });
         }
 
         const options = {
