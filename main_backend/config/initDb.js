@@ -418,11 +418,21 @@ const initDb = async () => {
     await client.query('COMMIT');
     console.log('✅ [DB INIT] All PostgreSQL tables initialized successfully.');
 
-    // ─── Auto-seed default department ─────────────────────────────────────────
     const { rows } = await pool.query('SELECT COUNT(*) AS count FROM departments');
     if (parseInt(rows[0].count) === 0) {
       await pool.query("INSERT INTO departments (name) VALUES ('General Engineering') ON CONFLICT DO NOTHING");
       console.log('🌱 [DB SEED] Created default department: General Engineering');
+    }
+
+    // ─── Auto-seed default admin ──────────────────────────────────────────────
+    const { rows: adminRows } = await pool.query("SELECT COUNT(*) AS count FROM users WHERE role = 'Admin' OR role = 'ADMIN'");
+    if (parseInt(adminRows[0].count) === 0) {
+      await pool.query(`
+        INSERT INTO users (id, name, email, password, role) 
+        VALUES ('ADM001', 'System Admin', 'admin@classlytics.com', 'admin123', 'Admin') 
+        ON CONFLICT DO NOTHING
+      `);
+      console.log('🌱 [DB SEED] Created default admin: admin@classlytics.com / admin123');
     }
 
   } catch (err) {
