@@ -3,6 +3,7 @@ import 'package:classlytics/core/theme/app_theme.dart';
 import 'package:classlytics/services/api_service.dart';
 import 'package:classlytics/services/auth_store.dart';
 import 'package:intl/intl.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class ParentFeeScreen extends StatefulWidget {
   const ParentFeeScreen({super.key});
@@ -14,15 +15,88 @@ class ParentFeeScreen extends StatefulWidget {
 class _ParentFeeScreenState extends State<ParentFeeScreen> {
   final ApiService _apiService = ApiService();
   late Future<Map<String, dynamic>> _feeFuture;
+  late Razorpay _razorpay;
+  String _currentOrderId = '';
 
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    _fetchFees();
+  }
+
+  void _fetchFees() {
     final childId = AuthStore.instance.currentUser?['child_id'] ?? '';
     if (childId.isNotEmpty) {
-      _feeFuture = _apiService.fetchFeeStatus(childId.toString());
+      setState(() {
+        _feeFuture = _apiService.fetchFeeStatus(childId.toString());
+      });
     } else {
-      _feeFuture = Future.error('No child linked');
+      setState(() {
+        _feeFuture = Future.error('No child linked');
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear(); // Removes all listeners
+    super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    try {
+      await _apiService.verifyPayment(
+        response.orderId ?? _currentOrderId,
+        response.paymentId ?? '',
+        response.signature ?? '',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Successful!'), backgroundColor: Colors.green));
+      _fetchFees();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification Failed: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('External Wallet Selected: ${response.walletName}')),
+    );
+  }
+
+  void _startPayment(double amount) async {
+    final parentId = AuthStore.instance.currentUser?['id'] ?? '';
+    final childId = AuthStore.instance.currentUser?['child_id'] ?? '';
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Initiating Payment...')));
+      final orderData = await _apiService.createPaymentOrder(parentId.toString(), childId.toString(), amount);
+      _currentOrderId = orderData['id'];
+
+      var options = {
+        'key': 'rzp_test_SjBzxeHAcNiiEw', // Using the test key from backend config
+        'amount': orderData['amount'],
+        'name': 'Classlytics Education',
+        'order_id': orderData['id'],
+        'description': 'Student Fee Payment',
+        'prefill': {
+          'contact': AuthStore.instance.currentUser?['phone'] ?? '',
+          'email': AuthStore.instance.currentUser?['email'] ?? '',
+        }
+      };
+
+      _razorpay.open(options);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
   }
 
@@ -68,7 +142,6 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Warning Alert
                 if (isOverdue)
                   _buildWarningCard('Payment Overdue!', 'Please clear the pending dues immediately to avoid late fees.', Colors.red)
                 else if (dueSoon)
@@ -76,7 +149,6 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
 
                 if (isOverdue || dueSoon) const SizedBox(height: 24),
 
-                // Main Fee Card
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -117,15 +189,11 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Action Button
                 if (pending > 0)
                   SizedBox(
                     height: 56,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Mock payment gateway
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Redirecting to payment gateway...')));
-                      },
+                      onPressed: () => _startPayment(double.parse(pending.toString())),
                       icon: const Icon(Icons.payment_rounded, color: Colors.white),
                       label: const Text('Pay Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                       style: ElevatedButton.styleFrom(
@@ -139,8 +207,8 @@ class _ParentFeeScreenState extends State<ParentFeeScreen> {
                 const Text('Recent Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                 const SizedBox(height: 16),
                 
-                // Mock Transaction Log
-                _buildTransactionRow('Semester 1 Fee Installment', formatter.format(paid), 'Success', '10 Aug 2025'),
+                if (paid > 0)
+                   _buildTransactionRow('Semester 1 Fee Installment', formatter.format(paid), 'Success', 'Earlier'),
               ],
             ),
           );

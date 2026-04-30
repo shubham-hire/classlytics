@@ -3,80 +3,90 @@ const crypto = require('crypto');
 const db = require('../config/db');
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'YOUR_TEST_KEY_ID',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'YOUR_TEST_SECRET'
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
 exports.createOrder = async (req, res) => {
-  try {
-    const { parent_id, student_id, amount } = req.body;
+    try {
+        const { amount, student_id } = req.body;
+        
+        if (!amount || !student_id) {
+            return res.status(400).json({ error: 'amount and student_id are required' });
+        }
 
-    if (!parent_id || !student_id || !amount) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+        const options = {
+            amount: Math.round(amount * 100), // amount in paise
+            currency: 'INR',
+            receipt: `receipt_${student_id}_${Date.now()}`
+        };
+
+        const order = await razorpay.orders.create(options);
+        
+        // Save the pending payment to the database
+        await db.execute(
+            'INSERT INTO payments (student_id, amount, status, razorpay_order_id) VALUES (?, ?, ?, ?)',
+            [student_id, amount, 'PENDING', order.id]
+        );
+
+        res.status(200).json({ id: order.id, amount: order.amount, currency: order.currency });
+    } catch (error) {
+        console.error('Create Order Error:', error);
+        res.status(500).json({ error: 'Failed to create order' });
     }
-
-    const options = {
-      amount: Math.round(amount * 100), // amount in the smallest currency unit (paise)
-      currency: "INR",
-      receipt: `receipt_${Date.now()}`
-    };
-
-    const order = await razorpay.orders.create(options);
-
-    if (!order) {
-      return res.status(500).json({ success: false, message: 'Failed to create order' });
-    }
-
-    // Save order in DB with status PENDING
-    await db.execute(
-      `INSERT INTO payments (parent_id, student_id, amount, status, razorpay_order_id)
-       VALUES (?, ?, ?, ?, ?)`,
-      [parent_id, student_id, amount, 'PENDING', order.id]
-    );
-
-    res.status(200).json({
-      success: true,
-      order_id: order.id,
-      amount: amount,
-      key_id: process.env.RAZORPAY_KEY_ID || 'YOUR_TEST_KEY_ID'
-    });
-
-  } catch (error) {
-    console.error('Error creating Razorpay order:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
-  }
 };
 
 exports.verifyPayment = async (req, res) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    const secret = process.env.RAZORPAY_KEY_SECRET || 'YOUR_TEST_SECRET';
-    
-    // Verify signature
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
-    const generated_signature = hmac.digest('hex');
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
 
-    if (generated_signature === razorpay_signature) {
-      // Payment is successful
-      await db.execute(
-        `UPDATE payments SET status = 'SUCCESS', razorpay_payment_id = ? WHERE razorpay_order_id = ?`,
-        [razorpay_payment_id, razorpay_order_id]
-      );
+        const expectedSignature = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(body.toString())
+            .digest('hex');
 
-      res.status(200).json({ success: true, message: 'Payment verified successfully' });
-    } else {
-      // Payment failed signature verification
-      await db.execute(
-        `UPDATE payments SET status = 'FAILED', razorpay_payment_id = ? WHERE razorpay_order_id = ?`,
-        [razorpay_payment_id, razorpay_order_id]
-      );
-      res.status(400).json({ success: false, message: 'Invalid payment signature' });
+        if (expectedSignature === razorpay_signature) {
+            // Signature is valid, update payment status
+            await db.execute(
+                'UPDATE payments SET status = ?, razorpay_payment_id = ? WHERE razorpay_order_id = ?',
+                ['SUCCESS', razorpay_payment_id, razorpay_order_id]
+            );
+
+            // Fetch the payment details to update fees
+            const [payments] = await db.execute('SELECT student_id, amount FROM payments WHERE razorpay_order_id = ?', [razorpay_order_id]);
+            if (payments.length > 0) {
+                const { student_id, amount } = payments[0];
+
+                // Update student_fee_assignments paid_amount
+                const [feeAssignments] = await db.execute('SELECT id, total_amount, paid_amount FROM student_fee_assignments WHERE student_id = ? ORDER BY due_date ASC', [student_id]);
+                if (feeAssignments.length > 0) {
+                    const fa = feeAssignments[0];
+                    const newPaid = parseFloat(fa.paid_amount) + parseFloat(amount);
+                    const newStatus = newPaid >= parseFloat(fa.total_amount) ? 'Paid' : 'Partial';
+                    await db.execute('UPDATE student_fee_assignments SET paid_amount = ?, status = ? WHERE id = ?', [newPaid, newStatus, fa.id]);
+                }
+
+                // Also update the older 'fees' table
+                const [fees] = await db.execute('SELECT id, paid_amount, total_fee FROM fees WHERE student_id = ? ORDER BY id DESC LIMIT 1', [student_id]);
+                if (fees.length > 0) {
+                    const f = fees[0];
+                    const newPaid = parseFloat(f.paid_amount) + parseFloat(amount);
+                    await db.execute('UPDATE fees SET paid_amount = ? WHERE id = ?', [newPaid, f.id]);
+                }
+            }
+
+            res.status(200).json({ success: true, message: 'Payment verified successfully' });
+        } else {
+            await db.execute(
+                'UPDATE payments SET status = ? WHERE razorpay_order_id = ?',
+                ['FAILED', razorpay_order_id]
+            );
+            res.status(400).json({ success: false, error: 'Invalid signature' });
+        }
+    } catch (error) {
+        console.error('Verify Payment Error:', error);
+        res.status(500).json({ error: 'Failed to verify payment' });
     }
-
-  } catch (error) {
-    console.error('Error verifying payment:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
-  }
 };

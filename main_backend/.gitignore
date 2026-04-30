@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment variables (NEVER commit real secrets)
+.env
+
+# Uploaded files (serve from cloud storage in prod)
+uploads/
+
+# Logs
+*.log
+seed.log
+server.log
+
+# Test artifacts
+parent_test_output.txt
+teacher_out.txt
+ai_no_student.json
+ai_yes_student.json
+normal_response.json
+
+# Misc
+query
+fix.js
+list-models.js
+test-*.js
+test_*.js
+test_*.sh
+run_tests.js
+verify_restriction.js
+migrate.js
