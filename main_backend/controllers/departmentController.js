@@ -27,14 +27,14 @@ exports.createDepartment = async (req, res) => {
   if (!name) return res.status(400).json({ error: 'Department name is required' });
 
   try {
-    const [result] = await db.execute('INSERT INTO departments (name) VALUES (?) RETURNING id', [name]);
+    const [result] = await db.execute('INSERT INTO departments (name) VALUES (?)', [name]);
     res.status(201).json({ 
       message: 'Department created successfully', 
-      id: result[0].id, 
+      id: result.insertId, 
       name 
     });
   } catch (err) {
-    if (err.code === '23505' || err.code === 'ER_DUP_ENTRY') {
+    if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A department with this name already exists' });
     }
     res.status(500).json({ error: err.message });

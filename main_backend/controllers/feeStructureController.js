@@ -79,7 +79,6 @@ exports.createStructure = async (req, res) => {
       INSERT INTO fee_structures 
         (class_id, academic_year, title, tuition_fee, exam_fee, transport_fee, library_fee, sports_fee, miscellaneous_fee, due_date)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING id
     `, [class_id, academic_year, title,
         tuition_fee, exam_fee, transport_fee, library_fee, sports_fee, miscellaneous_fee,
         due_date || null]);
@@ -89,11 +88,11 @@ exports.createStructure = async (req, res) => {
         (fs.tuition_fee + fs.exam_fee + fs.transport_fee + fs.library_fee + fs.sports_fee + fs.miscellaneous_fee) AS total_fee
       FROM fee_structures fs INNER JOIN classes c ON fs.class_id = c.id
       WHERE fs.id = ?
-    `, [result[0].id]);
+    `, [result.insertId]);
 
     res.status(201).json(created[0]);
   } catch (err) {
-    if (err.code === '23505' || err.code === 'ER_DUP_ENTRY') {
+    if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'A fee structure for this class and academic year already exists' });
     }
     console.error('[createStructure] Error:', err.message);

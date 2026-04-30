@@ -1,447 +1,289 @@
-const { pool } = require('./db');
+const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 
 const initDb = async () => {
-  const client = await pool.connect();
-  try {
-    console.log('⏳ [DB INIT] Initializing PostgreSQL tables…');
-    await client.query('BEGIN');
+    // 1. Create a temporary connection without database name to ensure DB exists
+    const connectionConfig = {
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+    };
 
-    // ─── Extensions ───────────────────────────────────────────────────────────
-    await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
-
-    // ─── global_sequences ─────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS global_sequences (
-        name       VARCHAR(50) PRIMARY KEY,
-        last_value INT DEFAULT 0
-      )
-    `);
-    await client.query(`
-      INSERT INTO global_sequences (name, last_value) VALUES ('student', 0), ('teacher', 0)
-      ON CONFLICT (name) DO NOTHING
-    `);
-
-    // ─── departments ──────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS departments (
-        id         SERIAL PRIMARY KEY,
-        name       VARCHAR(100) UNIQUE NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── users ────────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id            VARCHAR(50) PRIMARY KEY,
-        name          VARCHAR(100) NOT NULL,
-        email         VARCHAR(100) UNIQUE NOT NULL,
-        password      VARCHAR(255) NOT NULL,
-        role          VARCHAR(50) NOT NULL CHECK (role IN ('ADMIN','Admin','Teacher','Student','Parent','DEPARTMENT_ADMIN')),
-        phone         VARCHAR(20),
-        address       TEXT,
-        country       VARCHAR(100),
-        state         VARCHAR(100),
-        district      VARCHAR(100),
-        city          VARCHAR(100),
-        dept          VARCHAR(50),
-        department_id INT REFERENCES departments(id) ON DELETE SET NULL,
-        is_active     BOOLEAN DEFAULT TRUE,
-        created_at    TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── teachers ─────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS teachers (
-        id                  VARCHAR(50) PRIMARY KEY,
-        user_id             VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        employee_id         VARCHAR(50) UNIQUE NOT NULL,
-        department          VARCHAR(100),
-        designation         VARCHAR(50) NOT NULL,
-        joining_date        DATE,
-        employment_type     VARCHAR(20) DEFAULT 'Full-time' CHECK (employment_type IN ('Full-time','Part-time','Contract')),
-        qualification       VARCHAR(255),
-        specialization      VARCHAR(255),
-        experience_years    INT DEFAULT 0,
-        previous_school     VARCHAR(255),
-        gender              VARCHAR(10) CHECK (gender IN ('Male','Female','Other')),
-        dob                 DATE,
-        profile_img         VARCHAR(255),
-        subjects            TEXT,
-        classes             TEXT,
-        salary_structure_id VARCHAR(50),
-        bank_account_no     VARCHAR(50),
-        bank_ifsc           VARCHAR(20),
-        emergency_contact   VARCHAR(20),
-        created_at          TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── classes ──────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS classes (
-        id            VARCHAR(50) PRIMARY KEY,
-        name          VARCHAR(50) NOT NULL,
-        section       VARCHAR(10) NOT NULL,
-        teacher_id    VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
-        department_id INT REFERENCES departments(id) ON DELETE SET NULL
-      )
-    `);
-
-    // ─── divisions ────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS divisions (
-        id            SERIAL PRIMARY KEY,
-        class_id      VARCHAR(50) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-        division_name VARCHAR(10) NOT NULL,
-        created_at    TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── students ─────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS students (
-        id           VARCHAR(50) PRIMARY KEY,
-        user_id      VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
-        roll_no      INT,
-        dept         VARCHAR(50) NOT NULL,
-        current_year VARCHAR(20) NOT NULL,
-        dob          DATE,
-        parent_id    VARCHAR(50),
-        profile_img  VARCHAR(255),
-        division_id  INT REFERENCES divisions(id) ON DELETE SET NULL,
-        category     VARCHAR(10) DEFAULT 'OPEN' CHECK (category IN ('OPEN','SC_ST','EWS')),
-        created_at   TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── timetable ────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS timetable (
-        id          SERIAL PRIMARY KEY,
-        class_id    VARCHAR(50) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-        division_id INT REFERENCES divisions(id) ON DELETE SET NULL,
-        subject     VARCHAR(100) NOT NULL,
-        teacher_id  VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
-        day_of_week VARCHAR(20) NOT NULL,
-        start_time  TIME NOT NULL,
-        end_time    TIME NOT NULL,
-        created_at  TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── parents ──────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS parents (
-        id         VARCHAR(50) PRIMARY KEY,
-        user_id    VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
-        name       VARCHAR(255),
-        relation   VARCHAR(100),
-        phone      VARCHAR(50),
-        email      VARCHAR(255) UNIQUE,
-        password   VARCHAR(255),
-        child_id   VARCHAR(50) REFERENCES students(id) ON DELETE SET NULL,
-        occupation VARCHAR(100),
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // Add FK from students.parent_id -> parents.id (after parents table exists)
-    await client.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_student_parent'
-        ) THEN
-          ALTER TABLE students
-            ADD CONSTRAINT fk_student_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE SET NULL;
-        END IF;
-      END $$
-    `);
-
-    // ─── class_enrollments ────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS class_enrollments (
-        class_id    VARCHAR(50) REFERENCES classes(id) ON DELETE CASCADE,
-        student_id  VARCHAR(50) REFERENCES students(id) ON DELETE CASCADE,
-        roll_no     INT,
-        enrolled_at TIMESTAMPTZ DEFAULT NOW(),
-        PRIMARY KEY (class_id, student_id)
-      )
-    `);
-
-    // ─── attendance ───────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS attendance (
-        id         SERIAL PRIMARY KEY,
-        student_id VARCHAR(50) REFERENCES students(id) ON DELETE CASCADE,
-        date       DATE NOT NULL,
-        status     VARCHAR(10) NOT NULL CHECK (status IN ('Present','Absent','Late'))
-      )
-    `);
-
-    // ─── leave_requests ───────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS leave_requests (
-        id         SERIAL PRIMARY KEY,
-        student_id VARCHAR(50) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        parent_id  VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
-        start_date DATE NOT NULL,
-        end_date   DATE NOT NULL,
-        reason     TEXT NOT NULL,
-        status     VARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending','Approved','Rejected')),
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── marks ────────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS marks (
-        id         SERIAL PRIMARY KEY,
-        student_id VARCHAR(50) REFERENCES students(id) ON DELETE CASCADE,
-        subject    VARCHAR(50) NOT NULL,
-        score      FLOAT NOT NULL,
-        max_score  FLOAT NOT NULL,
-        type       VARCHAR(20) NOT NULL CHECK (type IN ('Quiz','Midterm','Final','Assignment')),
-        date       DATE NOT NULL
-      )
-    `);
-
-    // ─── assignments ──────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS assignments (
-        id          VARCHAR(50) PRIMARY KEY,
-        class_id    VARCHAR(50) REFERENCES classes(id) ON DELETE CASCADE,
-        teacher_id  VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
-        title       VARCHAR(255) NOT NULL,
-        description TEXT,
-        media_url   VARCHAR(500) DEFAULT NULL,
-        media_type  VARCHAR(10) DEFAULT 'none' CHECK (media_type IN ('image','pdf','none')),
-        deadline    TIMESTAMPTZ NOT NULL,
-        created_at  TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── submissions ──────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS submissions (
-        id            VARCHAR(50) PRIMARY KEY,
-        assignment_id VARCHAR(50) REFERENCES assignments(id) ON DELETE CASCADE,
-        student_id    VARCHAR(50) REFERENCES students(id) ON DELETE CASCADE,
-        note          TEXT,
-        submitted_at  TIMESTAMPTZ DEFAULT NOW(),
-        score_awarded FLOAT DEFAULT NULL
-      )
-    `);
-
-    // ─── quizzes ──────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS quizzes (
-        id               VARCHAR(50) PRIMARY KEY,
-        class_id         VARCHAR(50) REFERENCES classes(id) ON DELETE CASCADE,
-        teacher_id       VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
-        title            VARCHAR(255) NOT NULL,
-        description      TEXT,
-        duration_minutes INT NOT NULL DEFAULT 30,
-        created_at       TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── quiz_questions ───────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS quiz_questions (
-        id             VARCHAR(50) PRIMARY KEY,
-        quiz_id        VARCHAR(50) NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-        question       TEXT NOT NULL,
-        option_a       VARCHAR(500) NOT NULL,
-        option_b       VARCHAR(500) NOT NULL,
-        option_c       VARCHAR(500) NOT NULL,
-        option_d       VARCHAR(500) NOT NULL,
-        correct_option VARCHAR(1) NOT NULL CHECK (correct_option IN ('A','B','C','D')),
-        marks          INT NOT NULL DEFAULT 1
-      )
-    `);
-
-    // ─── quiz_submissions ─────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS quiz_submissions (
-        id                 VARCHAR(50) PRIMARY KEY,
-        quiz_id            VARCHAR(50) NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-        student_id         VARCHAR(50) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        score              INT NOT NULL DEFAULT 0,
-        total_marks        INT NOT NULL DEFAULT 0,
-        time_taken_seconds INT DEFAULT NULL,
-        answers            JSONB DEFAULT NULL,
-        submitted_at       TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE (quiz_id, student_id)
-      )
-    `);
-
-    // ─── behavior_logs ────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS behavior_logs (
-        id         SERIAL PRIMARY KEY,
-        student_id VARCHAR(50) REFERENCES students(id) ON DELETE CASCADE,
-        type       VARCHAR(10) NOT NULL CHECK (type IN ('Positive','Negative')),
-        remark     TEXT,
-        date       TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── messages ─────────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id          SERIAL PRIMARY KEY,
-        sender_id   VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
-        receiver_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
-        body        TEXT NOT NULL,
-        timestamp   TIMESTAMPTZ DEFAULT NOW(),
-        is_read     BOOLEAN DEFAULT FALSE
-      )
-    `);
-
-    // ─── announcements ────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS announcements (
-        id         SERIAL PRIMARY KEY,
-        class_id   VARCHAR(50) REFERENCES classes(id) ON DELETE CASCADE,
-        title      VARCHAR(255) NOT NULL,
-        body       TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── fees (legacy flat table) ─────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS fees (
-        id          SERIAL PRIMARY KEY,
-        student_id  VARCHAR(50) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        total_fee   NUMERIC(10,2) NOT NULL DEFAULT 50000.00,
-        paid_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        due_date    DATE,
-        semester    VARCHAR(20) DEFAULT 'Sem 1',
-        created_at  TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── fee_structures ───────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS fee_structures (
-        id                SERIAL PRIMARY KEY,
-        class_id          VARCHAR(50) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-        academic_year     VARCHAR(20) NOT NULL,
-        title             VARCHAR(255) NOT NULL,
-        tuition_fee       NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        exam_fee          NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        transport_fee     NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        library_fee       NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        sports_fee        NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        miscellaneous_fee NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        due_date          DATE,
-        created_at        TIMESTAMPTZ DEFAULT NOW(),
-        updated_at        TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE (class_id, academic_year)
-      )
-    `);
-
-    // ─── student_fee_assignments ──────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS student_fee_assignments (
-        id               SERIAL PRIMARY KEY,
-        student_id       VARCHAR(50) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        fee_structure_id INT NOT NULL REFERENCES fee_structures(id) ON DELETE CASCADE,
-        total_amount     NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        paid_amount      NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-        status           VARCHAR(10) DEFAULT 'Pending' CHECK (status IN ('Pending','Partial','Paid','Overdue')),
-        due_date         DATE,
-        assigned_at      TIMESTAMPTZ DEFAULT NOW(),
-        updated_at       TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE (student_id, fee_structure_id)
-      )
-    `);
-
-    // ─── fee_payments ─────────────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS fee_payments (
-        id            SERIAL PRIMARY KEY,
-        assignment_id INT NOT NULL REFERENCES student_fee_assignments(id) ON DELETE CASCADE,
-        student_id    VARCHAR(50) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        amount        NUMERIC(10,2) NOT NULL,
-        payment_mode  VARCHAR(20) DEFAULT 'Cash' CHECK (payment_mode IN ('Cash','Online','Cheque','DD','Simulated')),
-        reference_no  VARCHAR(100),
-        note          TEXT,
-        paid_at       TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // ─── category_fee_structures ──────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS category_fee_structures (
-        id            SERIAL PRIMARY KEY,
-        department_id INT REFERENCES departments(id),
-        year          VARCHAR(20),
-        category      VARCHAR(10) CHECK (category IN ('OPEN','SC_ST','EWS')),
-        amount        NUMERIC(10,2),
-        created_at    TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE (department_id, year, category)
-      )
-    `);
-
-    // ─── student_category_fees ────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS student_category_fees (
-        id               SERIAL PRIMARY KEY,
-        student_id       VARCHAR(50) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        fee_structure_id INT REFERENCES category_fee_structures(id) ON DELETE RESTRICT,
-        total_amount     NUMERIC(10,2),
-        paid_amount      NUMERIC(10,2) DEFAULT 0.00,
-        status           VARCHAR(10) DEFAULT 'PENDING' CHECK (status IN ('PENDING','PARTIAL','PAID')),
-        UNIQUE (student_id, fee_structure_id)
-      )
-    `);
-
-    // ─── payments (Razorpay) ──────────────────────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS payments (
-        id                  SERIAL PRIMARY KEY,
-        parent_id           VARCHAR(50),
-        student_id          VARCHAR(50),
-        amount              NUMERIC(10,2),
-        status              VARCHAR(10) DEFAULT 'PENDING' CHECK (status IN ('PENDING','SUCCESS','FAILED')),
-        razorpay_order_id   VARCHAR(255),
-        razorpay_payment_id VARCHAR(255),
-        created_at          TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    await client.query('COMMIT');
-    console.log('✅ [DB INIT] All PostgreSQL tables initialized successfully.');
-
-    const { rows } = await pool.query('SELECT COUNT(*) AS count FROM departments');
-    if (parseInt(rows[0].count) === 0) {
-      await pool.query("INSERT INTO departments (name) VALUES ('General Engineering') ON CONFLICT DO NOTHING");
-      console.log('🌱 [DB SEED] Created default department: General Engineering');
+    try {
+        const tempConn = await mysql.createConnection(connectionConfig);
+        await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'classlytics_db'}\``);
+        await tempConn.end();
+        console.log(`✅ [DB INIT] Database ensured: ${process.env.DB_NAME || 'classlytics_db'}`);
+    } catch (err) {
+        console.error('❌ [DB INIT ERROR] Could not create/check database:', err.message);
+        return; // Stop if we can't even ensure the database exists
     }
 
-    // ─── Auto-seed default admin ──────────────────────────────────────────────
-    const { rows: adminRows } = await pool.query("SELECT COUNT(*) AS count FROM users WHERE role = 'Admin' OR role = 'ADMIN'");
-    if (parseInt(adminRows[0].count) === 0) {
-      await pool.query(`
-        INSERT INTO users (id, name, email, password, role) 
-        VALUES ('ADM001', 'System Admin', 'admin@classlytics.com', 'admin123', 'Admin') 
-        ON CONFLICT DO NOTHING
-      `);
-      console.log('🌱 [DB SEED] Created default admin: admin@classlytics.com / admin123');
-    }
+    // 2. Now use the exported promisePool from db.js to create tables
+    const db = require('./db');
+    try {
+        console.log('⏳ [DB INIT] Creating tables...');
+        const schemaPath = path.join(__dirname, 'schema.sql');
+        const schema = fs.readFileSync(schemaPath, 'utf8');
 
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('❌ [DB INIT ERROR] Table initialization failed:', err.message);
-    throw err;
-  } finally {
-    client.release();
-  }
+        // Split schema into individual queries and strip comments
+        const queries = schema
+            .split(';')
+            .map(q => q
+                .split('\n')
+                .filter(line => !line.trim().startsWith('--'))
+                .join('\n')
+                .trim()
+            )
+            .filter(q => q.length > 0);
+
+        for (let query of queries) {
+            await db.execute(query);
+        }
+
+        console.log('✅ [DB INIT] All tables initialized successfully.');
+
+        // 3. Migration: Add missing columns if they don't exist
+        const columnsToEnsure = [
+            { table: 'users', col: 'phone', type: 'VARCHAR(20)' },
+            { table: 'users', col: 'address', type: 'TEXT' },
+            { table: 'users', col: 'country', type: 'VARCHAR(100)' },
+            { table: 'users', col: 'state', type: 'VARCHAR(100)' },
+            { table: 'users', col: 'district', type: 'VARCHAR(100)' },
+            { table: 'users', col: 'city', type: 'VARCHAR(100)' },
+            { table: 'users', col: 'dept', type: 'VARCHAR(50)' },
+            { table: 'students', col: 'roll_no', type: 'INT' },
+            { table: 'students', col: 'dob', type: 'DATE' },
+            { table: 'students', col: 'current_year', type: 'VARCHAR(20)' },
+            { table: 'students', col: 'dept', type: 'VARCHAR(50)' },
+            { table: 'students', col: 'parent_id', type: 'VARCHAR(50)' },
+            { table: 'parents', col: 'name', type: 'VARCHAR(255)' },
+            { table: 'parents', col: 'relation', type: 'VARCHAR(100)' },
+            { table: 'parents', col: 'phone', type: 'VARCHAR(50)' },
+            { table: 'parents', col: 'email', type: 'VARCHAR(255)' },
+            { table: 'parents', col: 'password', type: 'VARCHAR(255)' },
+            { table: 'parents', col: 'occupation', type: 'VARCHAR(100)' },
+            { table: 'students', col: 'category', type: "ENUM('OPEN','SC_ST','EWS') NOT NULL DEFAULT 'OPEN'" },
+        ];
+
+        // Ensure class_enrollments has roll_no column
+        try {
+            await db.execute('ALTER TABLE class_enrollments ADD COLUMN roll_no INT');
+            console.log('📡 [DB MIGRATION] Added column roll_no to class_enrollments');
+        } catch (e) { /* already exists */ }
+
+        // Ensure assignments has teacher_id column
+        try {
+            await db.execute('ALTER TABLE assignments ADD COLUMN teacher_id VARCHAR(50)');
+            console.log('📡 [DB MIGRATION] Added column teacher_id to assignments');
+        } catch (e) { /* already exists */ }
+
+        for (const c of columnsToEnsure) {
+            try {
+                await db.execute(`ALTER TABLE ${c.table} ADD COLUMN ${c.col} ${c.type}`);
+                console.log(`📡 [DB MIGRATION] Added column ${c.col} to ${c.table}`);
+            } catch (e) {
+                // Column likely already exists
+            }
+        }
+
+        // Ensure users.is_active column exists for Admin activate/deactivate
+        try {
+            await db.execute('ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE');
+            console.log('📡 [DB MIGRATION] Added column is_active to users');
+        } catch (e) { /* already exists */ }
+
+        // Ensure parent email is unique if present
+        try {
+            await db.execute('ALTER TABLE parents ADD UNIQUE KEY unique_parent_email (email)');
+            console.log('📡 [DB MIGRATION] Added unique index unique_parent_email to parents(email)');
+        } catch (e) { /* already exists */ }
+
+        // Ensure students.parent_id can reference parents(id)
+        try {
+            await db.execute('ALTER TABLE students ADD CONSTRAINT fk_student_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added FK fk_student_parent (students.parent_id -> parents.id)');
+        } catch (e) { /* already exists */ }
+
+        // Ensure fee_structures table exists (fee module)
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS fee_structures (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                class_id VARCHAR(50) NOT NULL,
+                academic_year VARCHAR(20) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                tuition_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                exam_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                transport_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                library_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                sports_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                miscellaneous_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                due_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+                UNIQUE KEY unique_class_year (class_id, academic_year)
+            )`);
+            console.log('✅ [DB MIGRATION] fee_structures table ensured.');
+        } catch (e) { /* already exists */ }
+
+        // Ensure student_fee_assignments table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS student_fee_assignments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id VARCHAR(50) NOT NULL,
+                fee_structure_id INT NOT NULL,
+                total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                status ENUM('Pending', 'Partial', 'Paid', 'Overdue') DEFAULT 'Pending',
+                due_date DATE,
+                assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_student_structure (student_id, fee_structure_id),
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                FOREIGN KEY (fee_structure_id) REFERENCES fee_structures(id) ON DELETE CASCADE
+            )`);
+            console.log('✅ [DB MIGRATION] student_fee_assignments table ensured.');
+        } catch (e) { /* already exists */ }
+
+        // Ensure category_fee_structures table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS category_fee_structures (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                department_id INT,
+                year VARCHAR(20),
+                category ENUM('OPEN','SC_ST','EWS'),
+                amount DECIMAL(10,2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (department_id) REFERENCES departments(id),
+                UNIQUE KEY unique_dept_year_category (department_id, year, category)
+            )`);
+            console.log('✅ [DB MIGRATION] category_fee_structures table ensured.');
+        } catch (e) { console.error('Error creating category_fee_structures:', e); }
+
+        // Ensure student_category_fees table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS student_category_fees (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id VARCHAR(50) NOT NULL,
+                fee_structure_id INT,
+                total_amount DECIMAL(10,2),
+                paid_amount DECIMAL(10,2) DEFAULT 0.00,
+                status ENUM('PENDING','PARTIAL','PAID') DEFAULT 'PENDING',
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                FOREIGN KEY (fee_structure_id) REFERENCES category_fee_structures(id) ON DELETE RESTRICT,
+                UNIQUE KEY unique_student_cat_fee (student_id, fee_structure_id)
+            )`);
+            console.log('✅ [DB MIGRATION] student_category_fees table ensured.');
+        } catch (e) { console.error('Error creating student_category_fees:', e); }
+
+        // ─── DEPARTMENT_ADMIN Migration ───────────────────────────────────────
+        // Ensure departments table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS departments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+            console.log('✅ [DB MIGRATION] departments table ensured.');
+            
+            // Auto-seed default department
+            const [rows] = await db.execute('SELECT COUNT(*) as count FROM departments');
+            if (rows[0].count === 0) {
+                await db.execute('INSERT INTO departments (name) VALUES ("General Engineering")');
+                console.log('🌱 [DB SEED] Created default department: General Engineering');
+            }
+        } catch (e) { /* already exists */ }
+
+        // Ensure divisions table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS divisions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                class_id VARCHAR(50) NOT NULL,
+                division_name VARCHAR(10) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+            )`);
+            console.log('✅ [DB MIGRATION] divisions table ensured.');
+        } catch (e) { /* already exists */ }
+
+        // Ensure timetable table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS timetable (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                class_id VARCHAR(50) NOT NULL,
+                division_id INT,
+                subject VARCHAR(100) NOT NULL,
+                teacher_id VARCHAR(50),
+                day_of_week VARCHAR(20) NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+                FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE SET NULL,
+                FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
+            )`);
+            console.log('✅ [DB MIGRATION] timetable table ensured.');
+        } catch (e) { /* already exists */ }
+
+        // Ensure users.department_id column exists
+        try {
+            await db.execute('ALTER TABLE users ADD COLUMN department_id INT, ADD FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added column department_id to users');
+        } catch (e) { /* already exists */ }
+
+        // Ensure classes.department_id column exists
+        try {
+            await db.execute('ALTER TABLE classes ADD COLUMN department_id INT, ADD FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added column department_id to classes');
+        } catch (e) { /* already exists */ }
+
+        // Ensure students.division_id column exists
+        try {
+            await db.execute('ALTER TABLE students ADD COLUMN division_id INT, ADD FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE SET NULL');
+            console.log('📡 [DB MIGRATION] Added column division_id to students');
+        } catch (e) { /* already exists */ }
+
+        try {
+            await db.execute(`ALTER TABLE users MODIFY COLUMN role ENUM('Admin','Teacher','Student','Parent','DEPARTMENT_ADMIN') NOT NULL`);
+            console.log('📡 [DB MIGRATION] Updated users.role ENUM to include DEPARTMENT_ADMIN');
+        } catch (e) { /* already correct */ }
+
+        // Ensure fee_payments table exists
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS fee_payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                assignment_id INT NOT NULL,
+                student_id VARCHAR(50) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                payment_mode ENUM('Cash', 'Online', 'Cheque', 'DD', 'Simulated') DEFAULT 'Cash',
+                reference_no VARCHAR(100),
+                note TEXT,
+                paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (assignment_id) REFERENCES student_fee_assignments(id) ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+            )`);
+            console.log('✅ [DB MIGRATION] fee_payments table ensured.');
+        } catch (e) { /* already exists */ }
+
+        // Ensure payments table exists for Razorpay
+        try {
+            await db.execute(`CREATE TABLE IF NOT EXISTS payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                parent_id VARCHAR(50),
+                student_id VARCHAR(50),
+                amount DECIMAL(10,2),
+                status ENUM('PENDING','SUCCESS','FAILED') DEFAULT 'PENDING',
+                razorpay_order_id VARCHAR(255),
+                razorpay_payment_id VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+            console.log('✅ [DB MIGRATION] payments table ensured.');
+        } catch (e) { console.error('❌ Error creating payments table:', e); }
+    } catch (err) {
+        console.error('❌ [DB INIT ERROR] Table initialization failed:', err.message);
+    }
 };
 
 module.exports = initDb;

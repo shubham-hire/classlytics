@@ -62,8 +62,9 @@ exports.setFeeRecord = async (req, res) => {
     await db.execute(
       `INSERT INTO fees (student_id, total_fee, paid_amount, due_date, semester)
        VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (student_id) DO UPDATE SET paid_amount = EXCLUDED.paid_amount, due_date = EXCLUDED.due_date, semester = EXCLUDED.semester`,
-      [studentId, totalFee, paidAmount, dueDate || null, semester || 'Sem 1']
+       ON DUPLICATE KEY UPDATE paid_amount = ?, due_date = ?, semester = ?`,
+      [studentId, totalFee, paidAmount, dueDate || null, semester || 'Sem 1',
+       paidAmount, dueDate || null, semester || 'Sem 1']
     );
     res.status(201).json({ message: 'Fee record updated successfully' });
   } catch (err) {

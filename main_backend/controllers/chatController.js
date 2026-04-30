@@ -31,9 +31,8 @@ async function ensureClassAIUser() {
     const [rows] = await db.execute(`SELECT id FROM users WHERE id = ?`, [CLASS_AI_SENDER_ID]);
     if (rows.length === 0) {
       await db.execute(
-        `INSERT INTO users (id, name, role, email, password)
-         VALUES (?, 'ClassAI', 'Admin', 'classai@classlytics.internal', '')
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT IGNORE INTO users (id, name, role, email, password)
+         VALUES (?, 'ClassAI', 'Admin', 'classai@classlytics.internal', '')`,
         [CLASS_AI_SENDER_ID]
       );
       console.log('[ChatController] Inserted classAI virtual user.');

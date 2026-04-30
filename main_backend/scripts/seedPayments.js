@@ -9,7 +9,7 @@ async function seedPayments() {
     try {
         // --- CLEANUP PREVIOUS TEST DATA ---
         console.log('🧹 Cleaning up previous test data...');
-        const testEmails = ['shubham_parent@classlytics.in', 'parent@test.com', 'student@test.com'];
+        const testEmails = ['shubham_parent@classlytics.in'];
         const testStudentIds = ['STU-PAY-001'];
 
         await db.query('DELETE FROM student_fee_assignments WHERE student_id IN (?)', [testStudentIds]);
@@ -54,7 +54,7 @@ async function seedPayments() {
         const studentUserId = uuidv4();
         await db.execute(
             'INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)',
-            [studentUserId, 'Aarav Sharma', 'student@test.com', hashedPassword, 'Student']
+            [studentUserId, 'Aarav Sharma', 'shubham_student@classlytics.in', hashedPassword, 'Student']
         );
 
         // 6. Create Division for the class

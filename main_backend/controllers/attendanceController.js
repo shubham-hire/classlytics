@@ -13,13 +13,13 @@ exports.markAttendance = async (req, res) => {
 
   try {
     const [result] = await db.execute(
-      'INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?) RETURNING id',
+      'INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?)',
       [studentId, attendanceDate, status]
     );
 
     res.status(201).json({
       message: "Attendance recorded successfully",
-      record: { id: result[0].id, studentId, date: attendanceDate, status }
+      record: { id: result.insertId, studentId, date: attendanceDate, status }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

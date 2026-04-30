@@ -24,7 +24,7 @@ exports.enrollStudents = async (req, res) => {
     for (const studentId of studentIds) {
       currentMax++;
       await db.execute(
-        'INSERT INTO class_enrollments (class_id, student_id, roll_no) VALUES (?, ?, ?) ON CONFLICT (class_id, student_id) DO NOTHING',
+        'INSERT IGNORE INTO class_enrollments (class_id, student_id, roll_no) VALUES (?, ?, ?)',
         [classId, studentId, currentMax]
       );
     }

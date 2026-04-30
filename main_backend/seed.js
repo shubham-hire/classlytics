@@ -25,6 +25,7 @@
 require('dotenv').config();
 const db = require('./config/db');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
 
 const CLEAN = process.argv.includes('--clean');
 
@@ -220,9 +221,10 @@ async function seed() {
   // ─── 1.5 Admin ──────────────────────────────────────────
   section('Admin');
   try {
+    const hashedPassword = await bcrypt.hash(ADMIN.password, 10);
     await db.execute(
       'INSERT IGNORE INTO users (id, name, email, password, role, phone) VALUES (?, ?, ?, ?, ?, ?)',
-      [ADMIN.userId, ADMIN.name, ADMIN.email, ADMIN.password, ADMIN.role, ADMIN.phone]
+      [ADMIN.userId, ADMIN.name, ADMIN.email, hashedPassword, ADMIN.role, ADMIN.phone]
     );
     ok(`Admin: ${ADMIN.name} (${ADMIN.email})`);
   } catch (e) {
@@ -233,9 +235,10 @@ async function seed() {
   section('Teachers');
   for (const t of TEACHERS) {
     try {
+      const hashedPassword = await bcrypt.hash(t.password, 10);
       await db.execute(
         'INSERT IGNORE INTO users (id, name, email, password, role, phone, dept) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [t.userId, t.name, t.email, t.password, t.role, t.phone, t.dept]
+        [t.userId, t.name, t.email, hashedPassword, t.role, t.phone, t.dept]
       );
       ok(`Teacher: ${t.name} (${t.email})`);
     } catch (e) {
@@ -266,9 +269,10 @@ async function seed() {
     const classId = CLASSES[s.classIdx].id;
 
     try {
+      const hashedPassword = await bcrypt.hash('password123', 10);
       await db.execute(
         'INSERT IGNORE INTO users (id, name, email, password, role, phone) VALUES (?, ?, ?, ?, ?, ?)',
-        [userId, s.name, s.email, 'password123', 'Student', `+91 900000${String(i+1).padStart(4,'0')}`]
+        [userId, s.name, s.email, hashedPassword, 'Student', `+91 900000${String(i+1).padStart(4,'0')}`]
       );
       await db.execute(
         'INSERT IGNORE INTO students (id, user_id, dept, current_year, dob) VALUES (?, ?, ?, ?, ?)',
@@ -288,13 +292,15 @@ async function seed() {
   section('Parents');
   for (const p of PARENTS) {
     try {
+      const hashedPassword = await bcrypt.hash(p.password, 10);
       await db.execute(
         'INSERT IGNORE INTO users (id, name, email, password, role, phone) VALUES (?, ?, ?, ?, ?, ?)',
-        [p.userId, p.name, p.email, p.password, p.role, p.phone]
+        [p.userId, p.name, p.email, hashedPassword, p.role, p.phone]
       );
+      // Also insert into parents table with hashed password
       await db.execute(
-        'INSERT IGNORE INTO parents (id, user_id, child_id, occupation) VALUES (?, ?, ?, ?)',
-        [p.parentId, p.userId, p.childId, p.occupation]
+        'INSERT IGNORE INTO parents (id, user_id, name, email, password, child_id, occupation) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [p.parentId, p.userId, p.name, p.email, hashedPassword, p.childId, p.occupation]
       );
       ok(`Parent: ${p.name} (${p.email}) → Child: ${p.childId}`);
     } catch (e) {
